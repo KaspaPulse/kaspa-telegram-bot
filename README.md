@@ -27,7 +27,7 @@ Rigorously tested in live solo mining environments to ensure absolute stability,
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/KaspaPulse/kaspa-telegram-bot.git](https://github.com/KaspaPulse/kaspa-telegram-bot.git)
+   git clone https://github.com/KaspaPulse/kaspa-telegram-bot.git
    cd kaspa-telegram-bot
    ```
 
