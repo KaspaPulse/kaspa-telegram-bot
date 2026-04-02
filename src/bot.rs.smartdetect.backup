@@ -1,4 +1,3 @@
-﻿#![allow(deprecated)]
 #![allow(deprecated, unused_imports)]
 use crate::api::ApiManager;
 use crate::state::{AppState, WalletData};
@@ -108,7 +107,7 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
     Ok(())
 }
 
-pub async fn handle_cmd(
+async fn handle_cmd(
     bot: Bot,
     msg: Message,
     cmd: Command,
@@ -404,73 +403,6 @@ async fn handle_cb(
             _ => Command::Start,
         };
         handle_cmd(bot, msg, cmd, state, api).await?;
-    }
-    Ok(())
-}
-
-/// Handles regular text messages (Smart Detect for Kaspa Addresses)
-pub async fn handle_smart_detect(
-    bot: teloxide::Bot,
-    msg: teloxide::types::Message,
-    state: std::sync::Arc<crate::state::AppState>,
-) -> teloxide::requests::ResponseResult<()> {
-    if let Some(text) = msg.text() {
-        let text = text.trim();
-
-        if text.starts_with("kaspa:") && text.len() >= 65 {
-            let cid = msg.chat.id; // Type: ChatId (For Telegram API)
-            let cid_i64 = cid.0; // Type: i64 (For Database & State)
-
-            log::info!("[SMART DETECT] Checking potential wallet from {}", cid_i64);
-
-            let user_wallet_count = state
-                .monitored_wallets
-                .iter()
-                .filter(|kv| kv.value().chat_ids.contains(&cid_i64))
-                .count();
-            if user_wallet_count >= crate::state::MAX_ACCOUNTS_PER_WALLET {
-                bot.send_message(cid, "⚠️ *Limit reached! You cannot track more wallets.*")
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-                return Ok(());
-            }
-
-            if let Some(valid_wallet) = crate::utils::helpers::clean_and_validate_wallet(text) {
-                let mut is_new = false;
-                let mut entry = state
-                    .monitored_wallets
-                    .entry(valid_wallet.clone())
-                    .or_insert_with(|| {
-                        is_new = true;
-                        crate::state::WalletData {
-                            last_balance: 0.0,
-                            chat_ids: vec![cid_i64],
-                        }
-                    });
-
-                if !is_new && !entry.chat_ids.contains(&cid_i64) {
-                    entry.chat_ids.push(cid_i64);
-                    state.save_wallets();
-                } else if is_new {
-                    state.save_wallets();
-                }
-
-                bot.send_message(
-                    cid,
-                    format!(
-                        "🧠 *Smart Detect:*\nAuto-Tracking started for:\n{}",
-                        valid_wallet
-                    ),
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .disable_web_page_preview(true)
-                .await?;
-            } else {
-                bot.send_message(cid, "❌ *Invalid Kaspa Address detected.*")
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            }
-        }
     }
     Ok(())
 }
