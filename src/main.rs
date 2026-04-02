@@ -1,4 +1,4 @@
-#![allow(deprecated)]
+﻿#![allow(deprecated)]
 use crate::bot::{handle_cmd, handle_smart_detect, Command};
 use crate::state::AppState;
 use std::sync::Arc;
@@ -13,6 +13,12 @@ pub mod utils;
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
+    if let Ok(token) = std::env::var("BOT_TOKEN") {
+        std::env::set_var("TELOXIDE_TOKEN", token);
+    } else {
+        log::error!("CRITICAL: BOT_TOKEN not found in .env file!");
+    }
     pretty_env_logger::init();
     log::info!("Starting Kaspa Rust Bot...");
 
