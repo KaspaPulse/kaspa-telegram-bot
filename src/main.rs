@@ -1,8 +1,17 @@
 #![allow(deprecated)]
 use teloxide::payloads::SendMessageSetters;
-mod api; mod bot; mod kaspa; mod state; mod utils;
-use dotenvy::dotenv; use std::sync::Arc; use teloxide::Bot; use std::time::Duration; use std::fs;
-use crate::state::AppState; use crate::api::ApiManager;
+mod api;
+mod bot;
+mod kaspa;
+mod state;
+mod utils;
+use crate::api::ApiManager;
+use crate::state::AppState;
+use dotenvy::dotenv;
+use std::fs;
+use std::sync::Arc;
+use std::time::Duration;
+use teloxide::Bot;
 
 #[tokio::main]
 async fn main() {
@@ -12,8 +21,10 @@ async fn main() {
 
     let state = Arc::new(AppState::new());
     let api = Arc::new(ApiManager::new());
-    let admin_id: Option<i64> = std::env::var("ADMIN_ID").ok().and_then(|id| id.parse().ok());
-    
+    let admin_id: Option<i64> = std::env::var("ADMIN_ID")
+        .ok()
+        .and_then(|id| id.parse().ok());
+
     state.load_data(admin_id);
     let bot = Bot::new(std::env::var("BOT_TOKEN").expect("CRITICAL: BOT_TOKEN must be set"));
 
@@ -22,17 +33,27 @@ async fn main() {
         if let Ok(id_str) = fs::read_to_string(".restart_flag") {
             if let Ok(chat_id) = id_str.trim().parse::<i64>() {
                 use teloxide::requests::Requester;
-                let _ = bot.send_message(teloxide::types::ChatId(chat_id), "✅ *Restart Successful!*\nSystem is back online at full capacity.").parse_mode(teloxide::types::ParseMode::Markdown).await;
+                let _ = bot
+                    .send_message(
+                        teloxide::types::ChatId(chat_id),
+                        "✅ *Restart Successful!*\nSystem is back online at full capacity.",
+                    )
+                    .parse_mode(teloxide::types::ParseMode::Markdown)
+                    .await;
             }
         }
         let _ = fs::remove_file(".restart_flag");
     }
 
-    let kaspa_state = state.clone(); let kaspa_bot = bot.clone();
-    tokio::spawn(async move { kaspa::start_kaspa_engine(kaspa_state, kaspa_bot).await; });
+    let kaspa_state = state.clone();
+    let kaspa_bot = bot.clone();
+    tokio::spawn(async move {
+        kaspa::start_kaspa_engine(kaspa_state, kaspa_bot).await;
+    });
 
     // [NEW] Background Memory Cleanup Task
-    let cleanup_state = state.clone(); let cleanup_api = api.clone();
+    let cleanup_state = state.clone();
+    let cleanup_api = api.clone();
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
@@ -46,4 +67,3 @@ async fn main() {
 
     bot::start_telegram_bot(bot, state.clone(), api.clone()).await;
 }
-

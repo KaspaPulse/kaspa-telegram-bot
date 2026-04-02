@@ -22,12 +22,12 @@ pub fn format_short_wallet(address: &str) -> String {
     if address.is_empty() {
         return "N/A".to_string();
     }
-    
+
     let parts: Vec<&str> = address.split(':').collect();
     if parts.len() == 2 {
         let prefix = parts[0];
         let payload = parts[1];
-        
+
         if payload.len() > 12 {
             let start = &payload[0..3];
             let end = &payload[payload.len() - 6..];
@@ -66,4 +66,3 @@ pub fn format_difficulty(val: f64) -> String {
         format!("{:.2}", val)
     }
 }
-

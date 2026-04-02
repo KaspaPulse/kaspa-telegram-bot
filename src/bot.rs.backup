@@ -23,7 +23,6 @@ pub enum Command {
     Fees,
     Network,
     Supply,
-    Broadcast(String),
 }
 
 pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiManager>) {
@@ -202,98 +201,7 @@ async fn handle_cmd(
                 .await?;
             }
         }
-        Command::Fees => {
-            log::info!("[CMD IN] /fees from {}", cid);
-            if let Ok(f) = api.get_fees().await {
-                let normal = f["normal"].as_f64().unwrap_or(0.0);
-                bot.send_message(msg.chat.id, format!("⛽ *Mempool Fees:* {} KAS", normal))
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            }
-        }
-        Command::Market => {
-            log::info!("[CMD IN] /market from {}", cid);
-            if let Ok(m) = api.get_market().await {
-                let mcap = m["marketcap"].as_f64().unwrap_or(0.0);
-                bot.send_message(msg.chat.id, format!("📊 *Market Cap:* ${:.2}", mcap))
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            }
-        }
-        Command::Add(wallet) => {
-            let user_wallet_count = state
-                .monitored_wallets
-                .iter()
-                .filter(|kv| kv.value().chat_ids.contains(&cid))
-                .count();
-            if user_wallet_count >= crate::state::MAX_ACCOUNTS_PER_WALLET {
-                bot.send_message(
-                    msg.chat.id,
-                    "⚠️ *Limit reached! You cannot track more wallets.*",
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-            } else if let Some(valid_wallet) =
-                crate::utils::helpers::clean_and_validate_wallet(&wallet)
-            {
-                let mut is_new = false;
-                let mut entry = state
-                    .monitored_wallets
-                    .entry(valid_wallet.clone())
-                    .or_insert_with(|| {
-                        is_new = true;
-                        crate::state::WalletData {
-                            last_balance: 0.0,
-                            chat_ids: vec![cid],
-                        }
-                    });
-                if !is_new && !entry.chat_ids.contains(&cid) {
-                    entry.chat_ids.push(cid);
-                    state.save_wallets();
-                } else if is_new {
-                    state.save_wallets();
-                }
-                bot.send_message(
-                    msg.chat.id,
-                    format!("✅ *Added for tracking:*\n{}", valid_wallet),
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-            } else {
-                bot.send_message(msg.chat.id, "❌ *Invalid Kaspa Address*")
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            }
-        }
-        Command::Remove(wallet) => {
-            if let Some(valid_wallet) = crate::utils::helpers::clean_and_validate_wallet(&wallet) {
-                if let Some(mut entry) = state.monitored_wallets.get_mut(&valid_wallet) {
-                    entry.chat_ids.retain(|&id| id != cid);
-                    state.save_wallets();
-                    bot.send_message(
-                        msg.chat.id,
-                        format!("🗑️ *Stopped tracking:*\n{}", valid_wallet),
-                    )
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-                }
-            }
-        }
-        Command::Broadcast(message) => {
-            let users = state.get_all_users();
-            for user_id in users {
-                let _ = bot
-                    .send_message(
-                        teloxide::types::ChatId(user_id),
-                        format!("📢 *Announcement:*\n{}", message),
-                    )
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await;
-            }
-            bot.send_message(msg.chat.id, "✅ *Broadcast sent to all users.*")
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-        }
+        _ => {}
     }
     Ok(())
 }
@@ -313,8 +221,6 @@ async fn handle_cb(
             "cmd_price" => Command::Price,
             "cmd_network" => Command::Network,
             "cmd_supply" => Command::Supply,
-            "cmd_fees" => Command::Fees,
-            "cmd_market" => Command::Market,
             _ => Command::Start,
         };
         handle_cmd(bot, msg, cmd, state, api).await?;
