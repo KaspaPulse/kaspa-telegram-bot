@@ -50,6 +50,7 @@ pub fn format_hashrate(val: f64) -> String {
     }
 }
 
+#[allow(dead_code)]
 pub fn format_difficulty(val: f64) -> String {
     if val == 0.0 {
         return "0.00".to_string();
@@ -65,3 +66,4 @@ pub fn format_difficulty(val: f64) -> String {
         format!("{:.2}", val)
     }
 }
+

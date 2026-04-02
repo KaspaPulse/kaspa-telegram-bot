@@ -1,3 +1,4 @@
+#![allow(deprecated, unused_imports)]
 use teloxide::{prelude::*, utils::command::BotCommands, types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode}};
 use std::sync::Arc;
 use std::time::Instant;
@@ -188,3 +189,4 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, api: Arc<ApiManager>, rl: Arc<Rat
     }
     Ok(())
 }
+

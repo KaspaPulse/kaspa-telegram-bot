@@ -1,7 +1,7 @@
 use dashmap::{DashMap, DashSet};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const WALLETS_FILE: &str = "wallets.json";
 pub const TRACKERS_FILE: &str = "trackers.json";
@@ -96,3 +96,4 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+

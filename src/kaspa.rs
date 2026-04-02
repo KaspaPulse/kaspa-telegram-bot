@@ -1,3 +1,4 @@
+#![allow(deprecated, unused_variables)]
 use std::sync::Arc;
 use futures_util::{StreamExt, SinkExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
@@ -129,13 +130,13 @@ async fn handle_utxos_changed(payload: &Value, state: Arc<AppState>, bot: Bot, h
                 state_clone.active_trackers.insert(tx_id_clone.clone(), active_tracker);
                 state_clone.save_trackers();
 
-                poll_api_for_hashes(state_clone, bot_clone, http_clone, tx_id_clone, address_clone, ws_clone, build_msg).await;
+                poll_api_for_hashes(state_clone, bot_clone, http_clone, tx_id_clone, ws_clone, build_msg).await;
             });
         }
     }
 }
 
-async fn poll_api_for_hashes<F>(state: Arc<AppState>, bot: Bot, http_client: Client, tx_id: String, address: String, ws_url: String, build_msg: F) 
+async fn poll_api_for_hashes<F>(state: Arc<AppState>, bot: Bot, http_client: Client, tx_id: String, ws_url: String, build_msg: F) 
 where F: Fn(&str, &str, &str) -> String 
 {
     let mut attempts = 0;
@@ -206,3 +207,4 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { let addr_val = entry.get("address")?; let payload = addr_val.get("payload").or(Some(addr_val)).and_then(|v| v.as_str())?; Some(if !payload.starts_with("kaspa:") { format!("kaspa:{}", payload) } else { payload.to_string() }) }
 fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount").or(u.get("amount_sompi"))).and_then(|v| v.as_f64().or_else(|| v.as_str().unwrap_or("0").parse::<f64>().ok())) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore").or(u.get("block_daa_score"))).and_then(|v| v.as_u64()) }
+

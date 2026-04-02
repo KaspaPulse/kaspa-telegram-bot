@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+use teloxide::payloads::SendMessageSetters;
 mod api; mod bot; mod kaspa; mod state; mod utils;
 use dotenvy::dotenv; use std::sync::Arc; use teloxide::Bot; use std::time::Duration; use std::fs;
 use crate::state::AppState; use crate::api::ApiManager;
@@ -44,3 +46,4 @@ async fn main() {
 
     bot::start_telegram_bot(bot, state.clone(), api.clone()).await;
 }
+
