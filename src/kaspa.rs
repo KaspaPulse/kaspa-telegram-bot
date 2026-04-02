@@ -2,6 +2,7 @@
 use std::sync::Arc;
 use futures_util::{StreamExt, SinkExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use serde_json::{json, Value};
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
@@ -13,14 +14,17 @@ use crate::state::{AppState, ActiveTracker, MessageRef, PendingAlert};
 use crate::utils::helpers::format_short_wallet;
 
 async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
-    if let Ok((mut ws_stream, _)) = connect_async(ws_url).await {
-        // [FIX] Added "id" to conform to Kaspa wRPC strict JSON-RPC schema
-        let req = json!({ "id": 1, "getBlockRequest": { "hash": hash, "includeTransactions": false } });
-        if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
-            if let Some(Ok(Message::Text(res))) = ws_stream.next().await {
-                if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
-                    if let Some(blues) = parsed.get("getBlockResponse").and_then(|b| b.get("block")).and_then(|b| b.get("verboseData")).and_then(|v| v.get("mergeSetBluesHashes")).and_then(|h| h.as_array()) {
-                        if !blues.is_empty() { return blues[0].as_str().map(|s| s.to_string()); }
+    if let Ok(mut request) = ws_url.into_client_request() {
+        // [CRITICAL FIX] Declare wrpc-json explicitly
+        request.headers_mut().insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
+        if let Ok((mut ws_stream, _)) = connect_async(request).await {
+            let req = json!({ "getBlockRequest": { "hash": hash, "includeTransactions": false } });
+            if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
+                if let Some(Ok(Message::Text(res))) = ws_stream.next().await {
+                    if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
+                        if let Some(blues) = parsed.get("getBlockResponse").and_then(|b| b.get("block")).and_then(|b| b.get("verboseData")).and_then(|v| v.get("mergeSetBluesHashes")).and_then(|h| h.as_array()) {
+                            if !blues.is_empty() { return blues[0].as_str().map(|s| s.to_string()); }
+                        }
                     }
                 }
             }
@@ -35,17 +39,24 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
 
     loop {
         if !state.is_monitoring.load(std::sync::atomic::Ordering::Relaxed) { tokio::time::sleep(Duration::from_secs(5)).await; continue; }
-        log::info!("[NODE] Connecting to Node02 at {}...", ws_url);
+        log::info!("[NODE] Connecting to Node02 wRPC at {}...", ws_url);
 
-        match connect_async(&ws_url).await {
+        let mut request = match ws_url.clone().into_client_request() {
+            Ok(req) => req,
+            Err(e) => { log::error!("❌ [NODE] Invalid WebSocket URL: {}", e); tokio::time::sleep(Duration::from_secs(5)).await; continue; }
+        };
+        
+        // [CRITICAL FIX] Inject the secret subprotocol header so Kaspad knows we speak JSON, not Borsh!
+        request.headers_mut().insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
+
+        match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
                 log::info!("✅ [NODE] Connected directly to Node02 successfully!");
                 state.is_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
 
                 let addresses: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                 if !addresses.is_empty() {
-                    // [FIX] Added "id" to conform to Kaspa wRPC strict JSON-RPC schema
-                    let sub_req = json!({ "id": 2, "notifyUtxosChangedRequest": { "addresses": addresses } });
+                    let sub_req = json!({ "notifyUtxosChangedRequest": { "addresses": addresses } });
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
@@ -60,7 +71,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                         }
                         Ok(Message::Close(c)) => { log::warn!("⚠️ [NODE] Connection closed by Node02: {:?}", c); break; }
                         Err(e) => { log::error!("❌ [NODE] WebSocket error: {}", e); break; }
-                        _ => { /* Ignore Ping/Pong silently */ }
+                        _ => { /* Ignore Ping/Pong silently and keep connection alive! */ }
                     }
                 }
             }
