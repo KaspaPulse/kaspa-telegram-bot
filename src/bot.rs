@@ -39,6 +39,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
 
     let handler = dptree::entry()
         .branch(Update::filter_message().filter_command::<Command>().endpoint(handle_cmd))
+        .branch(Update::filter_message().endpoint(handle_plain_text)) // NATIVE SMART DETECT
         .branch(Update::filter_callback_query().endpoint(handle_cb));
 
     Dispatcher::builder(bot, handler).dependencies(dptree::deps![state, api, admin_id, rate_limiter]).enable_ctrlc_handler().build().dispatch().await;
@@ -51,6 +52,28 @@ fn main_menu() -> InlineKeyboardMarkup {
         vec![InlineKeyboardButton::callback("🌐 Network", "cmd_network"), InlineKeyboardButton::callback("⛽ Fees", "cmd_fees")],
         vec![InlineKeyboardButton::callback("🪙 Supply", "cmd_supply"), InlineKeyboardButton::callback("📦 DAG", "cmd_dag")],
     ])
+}
+
+// 🧠 Smart Detect Handler
+async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>, admin: Option<i64>, rl: Arc<RateLimiter>) -> ResponseResult<()> {
+    let cid = msg.chat.id.0;
+    if let Some(text) = msg.text() {
+        if let Some(valid) = clean_and_validate_wallet(text) {
+            if !rl.check(cid, admin) { return Ok(()); }
+            let mut is_tracked = false;
+            if let Some(mut w) = state.monitored_wallets.get_mut(&valid) {
+                if w.chat_ids.contains(&cid) { is_tracked = true; }
+                else if w.chat_ids.len() >= MAX_ACCOUNTS_PER_WALLET { bot.send_message(msg.chat.id, "🚫 Limit Reached").await?; return Ok(()); }
+                else { w.chat_ids.push(cid); state.save_wallets(); }
+            } else {
+                state.monitored_wallets.insert(valid.clone(), WalletData { last_balance: 0.0, chat_ids: vec![cid] });
+                state.save_wallets();
+            }
+            let prefix = if is_tracked { "⚠️ Already Tracked" } else { "🧠 *Smart Detect:*\nAuto-Tracking started for:\n" };
+            bot.send_message(msg.chat.id, format!("{} [{}]({})", prefix, format_short_wallet(&valid), format!("https://kaspa.stream/addresses/{}", valid))).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await?;
+        }
+    }
+    Ok(())
 }
 
 async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, api: Arc<ApiManager>, admin: Option<i64>, rl: Arc<RateLimiter>) -> ResponseResult<()> {
@@ -189,4 +212,3 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, api: Arc<ApiManager>, rl: Arc<Rat
     }
     Ok(())
 }
-
