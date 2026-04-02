@@ -24,11 +24,6 @@ pub enum Command {
     Network,
     Supply,
     Broadcast(String),
-    Sys,
-    Logs,
-    Pause,
-    Resume,
-    Restart,
 }
 
 pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiManager>) {
@@ -298,86 +293,6 @@ async fn handle_cmd(
             bot.send_message(msg.chat.id, "✅ *Broadcast sent to all users.*")
                 .parse_mode(teloxide::types::ParseMode::Markdown)
                 .await?;
-        }
-        Command::Sys => {
-            let admin_id = std::env::var("ADMIN_ID").unwrap_or_default();
-            if msg.chat.id.0.to_string() == admin_id {
-                let mut sys = sysinfo::System::new_all();
-                sys.refresh_all();
-                let total_ram = sys.total_memory() / 1024 / 1024 / 1024;
-                let used_ram = sys.used_memory() / 1024 / 1024 / 1024;
-                let os_name =
-                    sysinfo::System::long_os_version().unwrap_or_else(|| "Unknown OS".to_string());
-                let text = format!("⚙️ *System Diagnostics*\n\n🔹 *OS Platform:* {}\n🔹 *Server RAM:* {} GB / {} GB\n🔹 *Tracked Wallets:* {}", os_name, used_ram, total_ram, state.monitored_wallets.len());
-                bot.send_message(msg.chat.id, text)
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            } else {
-                bot.send_message(msg.chat.id, "⛔ *Access Denied*\nRestricted to Admin.")
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-            }
-        }
-        Command::Logs => {
-            let admin_id = std::env::var("ADMIN_ID").unwrap_or_default();
-            if msg.chat.id.0.to_string() == admin_id {
-                if let Ok(out) = std::process::Command::new("journalctl")
-                    .args(["-u", "kaspabot.service", "-n", "25", "--no-pager"])
-                    .output()
-                {
-                    let logs = String::from_utf8_lossy(&out.stdout);
-                    let safe_logs = if logs.len() > 3900 {
-                        &logs[logs.len() - 3900..]
-                    } else {
-                        &logs
-                    };
-                    bot.send_message(
-                        msg.chat.id,
-                        format!("📜 *Recent System Logs:*\n`	ext\n{}\n`", safe_logs),
-                    )
-                    .parse_mode(teloxide::types::ParseMode::Markdown)
-                    .await?;
-                } else {
-                    bot.send_message(msg.chat.id, "❌ *Failed to read logs. Are you on Linux?*")
-                        .parse_mode(teloxide::types::ParseMode::Markdown)
-                        .await?;
-                }
-            }
-        }
-        Command::Restart => {
-            let admin_id = std::env::var("ADMIN_ID").unwrap_or_default();
-            if msg.chat.id.0.to_string() == admin_id {
-                let _ = std::fs::write(".restart_flag", msg.chat.id.0.to_string());
-                bot.send_message(
-                    msg.chat.id,
-                    "🔄 *System Reboot Initiated*\nRestarting process via systemd...",
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-                std::process::exit(0);
-            }
-        }
-        Command::Pause => {
-            let admin_id = std::env::var("ADMIN_ID").unwrap_or_default();
-            if msg.chat.id.0.to_string() == admin_id {
-                bot.send_message(
-                    msg.chat.id,
-                    "⏸️ *Engine Paused*\nKaspa Node disconnected. (Logic ready to link to state)",
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-            }
-        }
-        Command::Resume => {
-            let admin_id = std::env::var("ADMIN_ID").unwrap_or_default();
-            if msg.chat.id.0.to_string() == admin_id {
-                bot.send_message(
-                    msg.chat.id,
-                    "▶️ *Engine Resumed*\nReconnecting to Kaspa Node...",
-                )
-                .parse_mode(teloxide::types::ParseMode::Markdown)
-                .await?;
-            }
         }
     }
     Ok(())
