@@ -48,14 +48,19 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
-                while let Some(msg) = ws_stream.next().await {
-                    if let Ok(Message::Text(text)) = msg {
-                        if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                            if let Some(notification) = parsed.get("utxosChangedNotification") {
-                                handle_utxos_changed(notification, state.clone(), bot.clone(), http_client.clone(), ws_url.clone()).await;
+                                while let Some(msg) = ws_stream.next().await {
+                    match msg {
+                        Ok(Message::Text(text)) => {
+                            if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
+                                if let Some(notification) = parsed.get("utxosChangedNotification") {
+                                    handle_utxos_changed(notification, state.clone(), bot.clone(), http_client.clone(), ws_url.clone()).await;
+                                }
                             }
                         }
-                    } else { break; }
+                        Ok(Message::Close(_)) => { break; }
+                        Err(_) => { break; }
+                        _ => {} // Ignore Ping/Pong signals safely and keep connection alive
+                    }
                 }
             }
             Err(e) => { log::error!("[NODE FATAL] Connection failed: {}", e); }
@@ -207,4 +212,5 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { let addr_val = entry.get("address")?; let payload = addr_val.get("payload").or(Some(addr_val)).and_then(|v| v.as_str())?; Some(if !payload.starts_with("kaspa:") { format!("kaspa:{}", payload) } else { payload.to_string() }) }
 fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount").or(u.get("amount_sompi"))).and_then(|v| v.as_f64().or_else(|| v.as_str().unwrap_or("0").parse::<f64>().ok())) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore").or(u.get("block_daa_score"))).and_then(|v| v.as_u64()) }
+
 
