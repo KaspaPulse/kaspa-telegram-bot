@@ -14,7 +14,8 @@ use crate::utils::helpers::format_short_wallet;
 
 async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
     if let Ok((mut ws_stream, _)) = connect_async(ws_url).await {
-        let req = json!({ "getBlockRequest": { "hash": hash, "includeTransactions": false } });
+        // [FIX] Added "id" to conform to Kaspa wRPC strict JSON-RPC schema
+        let req = json!({ "id": 1, "getBlockRequest": { "hash": hash, "includeTransactions": false } });
         if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
             if let Some(Ok(Message::Text(res))) = ws_stream.next().await {
                 if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
@@ -43,11 +44,11 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
 
                 let addresses: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                 if !addresses.is_empty() {
-                    let sub_req = json!({ "notifyUtxosChangedRequest": { "addresses": addresses } });
+                    // [FIX] Added "id" to conform to Kaspa wRPC strict JSON-RPC schema
+                    let sub_req = json!({ "id": 2, "notifyUtxosChangedRequest": { "addresses": addresses } });
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
-                // Full Protection: Only break the loop on explicit errors or closures
                 while let Some(msg) = ws_stream.next().await {
                     match msg {
                         Ok(Message::Text(text)) => {
@@ -59,7 +60,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                         }
                         Ok(Message::Close(c)) => { log::warn!("⚠️ [NODE] Connection closed by Node02: {:?}", c); break; }
                         Err(e) => { log::error!("❌ [NODE] WebSocket error: {}", e); break; }
-                        _ => { /* Ignore Ping/Pong frames silently and keep the connection alive! */ }
+                        _ => { /* Ignore Ping/Pong silently */ }
                     }
                 }
             }
