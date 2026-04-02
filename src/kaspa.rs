@@ -12,7 +12,6 @@ use chrono::Utc;
 use crate::state::{AppState, ActiveTracker, MessageRef, PendingAlert};
 use crate::utils::helpers::format_short_wallet;
 
-// [NEW] Prioritize Local Node for Mined Block Fetch
 async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
     if let Ok((mut ws_stream, _)) = connect_async(ws_url).await {
         let req = json!({ "getBlockRequest": { "hash": hash, "includeTransactions": false } });
@@ -48,7 +47,8 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
-                                while let Some(msg) = ws_stream.next().await {
+                // Full Protection: Only break the loop on explicit errors or closures
+                while let Some(msg) = ws_stream.next().await {
                     match msg {
                         Ok(Message::Text(text)) => {
                             if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
@@ -57,14 +57,15 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                                 }
                             }
                         }
-                        Ok(Message::Close(_)) => { break; }
-                        Err(_) => { break; }
-                        _ => {} // Ignore Ping/Pong signals safely and keep connection alive
+                        Ok(Message::Close(c)) => { log::warn!("⚠️ [NODE] Connection closed by Node02: {:?}", c); break; }
+                        Err(e) => { log::error!("❌ [NODE] WebSocket error: {}", e); break; }
+                        _ => { /* Ignore Ping/Pong frames silently and keep the connection alive! */ }
                     }
                 }
             }
-            Err(e) => { log::error!("[NODE FATAL] Connection failed: {}", e); }
+            Err(e) => { log::error!("❌ [NODE FATAL] Connection failed: {}", e); }
         }
+        log::warn!("🔄 [NODE] Disconnected. Reconnecting in 5 seconds...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }
@@ -164,7 +165,6 @@ where F: Fn(&str, &str, &str) -> String
                             a_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", a_hash_display, a_hash_full);
                         }
 
-                        // [NEW] Attempt Local Fetch First, fallback to API
                         let mut mined_hash_link = "`Not Found`".to_string();
                         if let Some(local_mined) = fetch_local_block(b_hash_full, &ws_url).await {
                              let m_hash_disp = format!("{}...{}", &local_mined[0..8], &local_mined[local_mined.len()-8..]);
@@ -212,5 +212,3 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { let addr_val = entry.get("address")?; let payload = addr_val.get("payload").or(Some(addr_val)).and_then(|v| v.as_str())?; Some(if !payload.starts_with("kaspa:") { format!("kaspa:{}", payload) } else { payload.to_string() }) }
 fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount").or(u.get("amount_sompi"))).and_then(|v| v.as_f64().or_else(|| v.as_str().unwrap_or("0").parse::<f64>().ok())) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore").or(u.get("block_daa_score"))).and_then(|v| v.as_u64()) }
-
-
