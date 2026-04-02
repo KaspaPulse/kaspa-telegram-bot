@@ -1,0 +1,13 @@
+# Compiled Rust output
+/target/
+
+# Environment Variables (CRITICAL SECURITY)
+.env
+
+# Local Databases (Do not push user data)
+wallets.json
+trackers.json
+
+# Temporary Files
+.restart_flag
+**/*.rs.bk
