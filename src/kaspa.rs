@@ -15,15 +15,21 @@ use crate::utils::helpers::format_short_wallet;
 
 async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
     if let Ok(mut request) = ws_url.into_client_request() {
-        // [CRITICAL FIX] Declare wrpc-json explicitly
         request.headers_mut().insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
         if let Ok((mut ws_stream, _)) = connect_async(request).await {
-            let req = json!({ "getBlockRequest": { "hash": hash, "includeTransactions": false } });
+            // [CRITICAL FIX] Kaspa wRPC strict Array Format: [1 (Request), ID, "Method", { Payload }]
+            let req = json!([1, 1, "getBlockRequest", { "hash": hash, "includeTransactions": false }]);
+            
             if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
                 if let Some(Ok(Message::Text(res))) = ws_stream.next().await {
                     if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
-                        if let Some(blues) = parsed.get("getBlockResponse").and_then(|b| b.get("block")).and_then(|b| b.get("verboseData")).and_then(|v| v.get("mergeSetBluesHashes")).and_then(|h| h.as_array()) {
-                            if !blues.is_empty() { return blues[0].as_str().map(|s| s.to_string()); }
+                        // Response Format: [2 (Response), ID, Error/Null, { Payload }]
+                        if let Some(arr) = parsed.as_array() {
+                            if arr.len() == 4 && arr[0].as_u64() == Some(2) && arr[2].is_null() {
+                                if let Some(blues) = arr[3].get("getBlockResponse").and_then(|b| b.get("block")).and_then(|b| b.get("verboseData")).and_then(|v| v.get("mergeSetBluesHashes")).and_then(|h| h.as_array()) {
+                                    if !blues.is_empty() { return blues[0].as_str().map(|s| s.to_string()); }
+                                }
+                            }
                         }
                     }
                 }
@@ -46,7 +52,6 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
             Err(e) => { log::error!("❌ [NODE] Invalid WebSocket URL: {}", e); tokio::time::sleep(Duration::from_secs(5)).await; continue; }
         };
         
-        // [CRITICAL FIX] Inject the secret subprotocol header so Kaspad knows we speak JSON, not Borsh!
         request.headers_mut().insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
 
         match connect_async(request).await {
@@ -56,7 +61,8 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
 
                 let addresses: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                 if !addresses.is_empty() {
-                    let sub_req = json!({ "notifyUtxosChangedRequest": { "addresses": addresses } });
+                    // [CRITICAL FIX] Kaspa wRPC strict Array Format
+                    let sub_req = json!([1, 2, "notifyUtxosChangedRequest", { "addresses": addresses }]);
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
@@ -64,8 +70,15 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                     match msg {
                         Ok(Message::Text(text)) => {
                             if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                if let Some(notification) = parsed.get("utxosChangedNotification") {
-                                    handle_utxos_changed(notification, state.clone(), bot.clone(), http_client.clone(), ws_url.clone()).await;
+                                // Notification Format: [3 (Notification), "Method", { Payload }]
+                                if let Some(arr) = parsed.as_array() {
+                                    if arr.len() == 3 && arr[0].as_u64() == Some(3) {
+                                        if let Some(method) = arr[1].as_str() {
+                                            if method == "notifyUtxosChangedResponse" || method == "utxosChangedNotification" {
+                                                handle_utxos_changed(&arr[2], state.clone(), bot.clone(), http_client.clone(), ws_url.clone()).await;
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
