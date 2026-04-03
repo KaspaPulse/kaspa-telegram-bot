@@ -47,7 +47,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
         admin_cmds.push(BotCommand::new("restart", "👑 Admin: Reboot Process"));
         admin_cmds.push(BotCommand::new("logs", "👑 Admin: View Last 25 Logs"));
         admin_cmds.push(BotCommand::new("broadcast", "👑 Admin: Send msg to all"));
-        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: ChatId(admin) }).await;
+        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: teloxide::types::Recipient::Id(ChatId(admin)) }).await;
     }
 
     let handler = dptree::entry()
@@ -168,7 +168,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             }
         },
         Command::Dag => { bot.send_message(msg.chat.id, "📦 *DAG info is currently synced via WS Node.*").parse_mode(ParseMode::Markdown).await?; },
-        Command::Add(w) | Command::Remove(w) => { bot.send_message(msg.chat.id, "Please just paste the wallet address directly to add/remove.").await?; },
+        Command::Add(ref _w) | Command::Remove(ref _w) => { bot.send_message(msg.chat.id, "Please just paste the wallet address directly to add/remove.").await?; },
         
         // --- ADMIN COMMANDS ---
         Command::Sys => {
@@ -250,3 +250,4 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+

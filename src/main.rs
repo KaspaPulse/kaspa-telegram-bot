@@ -1,49 +1,34 @@
-﻿#![allow(deprecated)]
-use teloxide::prelude::*;
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::bot::{Command, handle_cmd, handle_smart_detect};
+use teloxide::prelude::*;
+use dotenv::dotenv;
 
 pub mod api;
 pub mod bot;
 pub mod kaspa;
 pub mod state;
 pub mod utils;
-pub mod dag_buffer;
+
+use crate::state::AppState;
+use crate::api::ApiManager;
 
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().ok();
-    if let Ok(token) = std::env::var("BOT_TOKEN") {
-        std::env::set_var("TELOXIDE_TOKEN", token);
-    }
+    dotenv().ok();
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+    log::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
+
+    let bot_client = Bot::from_env();
+    let state = Arc::new(AppState::new());
+    let api = Arc::new(ApiManager::new());
+
+    let state_clone = state.clone();
+    let bot_clone = bot_client.clone();
     
-    pretty_env_logger::init();
-    log::info!("Starting Kaspa Rust Bot...");
+    // تشغيل محرك كاسبا في مسار خلفي مستقل
+    tokio::spawn(async move {
+        kaspa::start_kaspa_engine(state_clone, bot_clone).await;
+    });
 
-    let bot = Bot::from_env();
-    let state = AppState::new();
-    let state_arc = Arc::new(state);
-
-    // Enterprise Dispatcher with proper Dependency Injection
-    let handler = dptree::entry()
-        .branch(
-            Update::filter_message()
-                .filter_command::<Command>()
-                .endpoint(handle_cmd),
-        )
-        .branch(
-            Update::filter_message()
-                .endpoint(handle_smart_detect),
-        );
-
-    Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![
-            state_arc.clone(), 
-            state_arc.api_manager.clone()
-        ])
-        .enable_ctrlc_handler()
-        .build()
-        .dispatch()
-        .await;
+    // تشغيل محرك التيليجرام بشكل متزامن
+    bot::start_telegram_bot(bot_client, state, api).await;
 }

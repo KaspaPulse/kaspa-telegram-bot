@@ -168,7 +168,7 @@ async fn handle_utxos_changed(
                 None => continue,
             };
             let daa_score = extract_daa_score(entry).unwrap_or(0);
-            if state.processed_txids.contains_key(&tx_id) {
+            if state.processed_txids.contains(&tx_id) {
                 continue;
             }
             state
@@ -182,7 +182,7 @@ async fn handle_utxos_changed(
             let ws_clone = ws_url.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(Duration::from_secs(20)).await;
-                state_clone.processed_txids.insert(tx_id_clone.clone(), ());
+                state_clone.processed_txids.insert(tx_id_clone.clone());
                 let final_daa = match state_clone.pending_alerts.remove(&tx_id_clone) {
                     Some(alert) => alert.1.daa_score,
                     None => return,
@@ -239,4 +239,5 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
+
 

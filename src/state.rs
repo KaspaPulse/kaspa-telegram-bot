@@ -1,6 +1,6 @@
 use dashmap::{DashMap, DashSet};
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 
@@ -88,3 +88,4 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+
