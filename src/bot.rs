@@ -283,3 +283,4 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
