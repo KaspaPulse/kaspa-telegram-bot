@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use teloxide::prelude::*;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 
 pub mod api;
 pub mod bot;
@@ -32,3 +32,4 @@ async fn main() {
     // تشغيل محرك التيليجرام بشكل متزامن
     bot::start_telegram_bot(bot_client, state, api).await;
 }
+
