@@ -74,7 +74,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
 
         match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
-                tracing::info!("[NODE] Connected! Handshaking...");
+                tracing::info!("✅ [NODE] Connected! Handshaking...");
                 let mut last_wallet_count = 0;
                 let mut sub_interval = tokio::time::interval(Duration::from_secs(10));
 
@@ -86,13 +86,14 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [CRITICAL FIX]: wRPC JSON-RPC strict Array format
+                                // [CRITICAL FIX]: Use Kaspa Native Protobuf-JSON format!
+                                // NO "jsonrpc", NO "method", NO "params". Just the Request Name as the Key.
                                 let sub_req = json!({
-                                    "jsonrpc": "2.0",
-                                    "id": 2,
-                                    "method": "notifyUtxosChangedRequest", 
-                                    "params": [{ "addresses": addrs }] // Must be inside an array!
+                                    "notifyUtxosChangedRequest": {
+                                        "addresses": addrs
+                                    }
                                 });
+                                
                                 let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                                 tracing::info!("🔄 [NODE] Requested Subscription for {} wallets.", current_count);
                             }
@@ -105,28 +106,25 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                             match msg {
                                 Some(Ok(Message::Text(text))) => {
                                     if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                        // 1. Process Notifications
-                                        if let Some(method) = parsed.get("method").and_then(|m: &Value| m.as_str()) {
-                                            if method == "utxosChangedNotification" {
-                                                if let Some(params) = parsed.get("params").and_then(|p| p.as_array()) {
-                                                    if let Some(notification) = params.get(0) {
-                                                        parse_utxos_and_queue(notification, &state, &tx_event).await;
-                                                    }
-                                                }
-                                            }
+                                        
+                                        // 1. Process Live Reward Notifications
+                                        if let Some(notification) = parsed.get("utxosChangedNotification") {
+                                            parse_utxos_and_queue(notification, &state, &tx_event).await;
                                         } 
-                                        // 2. Process Response ACKs / Errors
-                                        else if let Some(id) = parsed.get("id").and_then(|i: &Value| i.as_u64()) {
-                                            if id == 2 {
-                                                if let Some(err) = parsed.get("error") {
-                                                    if !err.is_null() {
-                                                        tracing::error!("❌ [NODE RPC ERROR]: {}", err);
-                                                        last_wallet_count = 0; // Reset so it tries again
-                                                    }
-                                                } else {
-                                                    tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
+                                        // 2. Process Subscription Acknowledgements
+                                        else if let Some(response) = parsed.get("notifyUtxosChangedResponse") {
+                                            if let Some(err) = response.get("error") {
+                                                if !err.is_null() {
+                                                    tracing::error!("❌ [NODE RPC ERROR]: {}", err);
+                                                    last_wallet_count = 0; // Force retry
                                                 }
+                                            } else {
+                                                tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
                                             }
+                                        }
+                                        // 3. Process General Errors
+                                        else if let Some(err) = parsed.get("error") {
+                                            tracing::error!("❌ [NODE ERROR]: {}", err);
                                         }
                                     }
                                 }
