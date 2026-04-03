@@ -85,8 +85,16 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                             if current_count != last_wallet_count {
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
-                                let sub_req = json!({"jsonrpc":"2.0","id":2,"method":"notifyUtxosChanged","params":{"addresses":addrs}});
+                                
+                                // [CRITICAL FIX]: Kaspa node strictly requires "Request" suffix!
+                                let sub_req = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": 2,
+                                    "method": "notifyUtxosChangedRequest", 
+                                    "params": { "addresses": addrs }
+                                });
                                 let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
+                                tracing::info!("🔄 [NODE] Requested Subscription for {} wallets.", current_count);
                             }
                         }
                         _ = state.shutdown_token.cancelled() => {
@@ -97,7 +105,22 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                             match msg {
                                 Some(Ok(Message::Text(text))) => {
                                     if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                        if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
+                                        // 1. Catch and log node errors
+                                        if let Some(err) = parsed.get("error") {
+                                            if !err.is_null() {
+                                                tracing::error!("❌ [NODE RPC ERROR]: {}", err);
+                                            }
+                                        }
+                                        
+                                        // 2. Catch Success ACKs
+                                        if let Some(id) = parsed.get("id").and_then(|i: &Value| i.as_u64()) {
+                                            if id == 2 && parsed.get("error").map_or(true, |e| e.is_null()) {
+                                                tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
+                                            }
+                                        }
+
+                                        // 3. Process Notifications
+                                        if let Some(method) = parsed.get("method").and_then(|m: &Value| m.as_str()) {
                                             if method == "utxosChangedNotification" {
                                                 parse_utxos_and_queue(parsed.get("params").unwrap_or(&json!({})), &state, &tx_event).await;
                                             }
@@ -131,6 +154,7 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
             if state.processed_txids.contains_key(&tx_id) { continue; }
             state.processed_txids.insert(tx_id.clone(), std::time::Instant::now());
 
+            tracing::info!("💎 [EVENT] Valid Reward Queued: {} KAS for {}", Kaspa::from(amount), address);
             let _ = tx.try_send(UtxoEvent { tx_id, address, amount, daa_score });
         }
     }
@@ -145,11 +169,14 @@ macro_rules! build_reward_msg {
 
 async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
     let exact_reward: Kaspa = event.amount.into();
-    let mut live_bal = match api.get_balance(&event.address).await {
-        Ok(bal) if bal > 0.0 => Kaspa(bal),
-        _ => Kaspa(0.0),
-    };
+    let mut live_bal = Kaspa(0.0);
 
+    // [SPEED FIX] Quick 3-second timeout for balance fetch to ensure INSTANT notification
+    if let Ok(Ok(bal)) = tokio::time::timeout(Duration::from_secs(3), api.get_balance(&event.address)).await {
+        if bal > 0.0 { live_bal = Kaspa(bal); }
+    }
+    
+    // Fallback to cached balance if API is slow
     if let Some(mut wallet) = state.monitored_wallets.get_mut(&event.address) {
         if live_bal.0 == 0.0 { live_bal = Kaspa(wallet.last_balance + exact_reward.0); }
         wallet.last_balance = live_bal.0;
@@ -165,7 +192,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
 
     let initial_msg = build_reward_msg!("⏳ `Searching...`", "⏳ `Indexing...`", "⏳ `Searching...`", dt_str, short_wallet, full_address, exact_reward, live_bal, short_tx_id, tx_link, event.daa_score);
 
-    tracing::info!("[PROCESS] NEW REWARD: {} KAS | TX: {} | Sent initial alert, starting background API poll.", exact_reward, tx_id);
+    tracing::info!("[PROCESS] NEW REWARD: {} KAS | TX: {} | Sent initial alert, starting API poll.", exact_reward, tx_id);
 
     let subscribers = match state.monitored_wallets.get(&event.address) { Some(w) => w.chat_ids.clone(), None => return };
 
@@ -184,7 +211,6 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
             let t_link = tx_link.clone();
             let d_score = event.daa_score;
 
-            // [ENTERPRISE FIX] Background API Polling exactly like the old JS code
             tokio::spawn(async move {
                 let mut attempts = 0;
                 let mut interval = tokio::time::interval(Duration::from_secs(10));
@@ -192,10 +218,10 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                 loop {
                     interval.tick().await;
                     attempts += 1;
-                    tracing::info!("[API POLL] Checking for TX {} (Attempt {})", t_id, attempts);
+                    tracing::info!("[API POLL] Checking TX {} (Attempt {})", t_id, attempts);
 
                     if attempts > 45 {
-                        tracing::warn!("[TIMEOUT] Gave up fetching hashes for TX {}", t_id);
+                        tracing::warn!("[TIMEOUT] Gave up on TX {}", t_id);
                         let failed_msg = build_reward_msg!("❌ `Timeout`", "❌ `Timeout`", "❌ `Timeout`", dt, s_wal, addr, exact_reward, live_bal, s_tx, t_link, d_score);
                         let _ = b_clone.edit_message_text(ChatId(chat_id), msg_id, failed_msg).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await;
                         break;
@@ -205,7 +231,6 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                         if let Ok(tx_data) = tx_res.json::<Value>().await {
                             if let Some(b_hash_arr) = tx_data.get("block_hash").and_then(|v: &Value| v.as_array()) {
                                 if let Some(b_hash_full) = b_hash_arr.get(0).and_then(|v: &Value| v.as_str()) {
-                                    tracing::info!("[API SUCCESS] Found Hashes for TX {}", t_id);
                                     let b_hash_display = format!("{}...{}", &b_hash_full[..8], &b_hash_full[b_hash_full.len()-8..]);
                                     let b_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", b_hash_display, b_hash_full);
 
@@ -254,7 +279,18 @@ fn extract_tx_id(entry: &Value) -> Option<String> {
     let outpoint = entry.get("outpoint")?;
     outpoint.get("transactionId").or(outpoint.get("transaction_id")).and_then(|v: &Value| v.as_str().map(|s| s.to_string()))
 }
-fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v: &Value| v.as_str().map(|s| s.to_string())) }
+
+fn extract_address(entry: &Value) -> Option<String> {
+    if let Some(addr) = entry.get("address") {
+        if let Some(s) = addr.as_str() { return Some(s.to_string()); }
+        if let Some(payload) = addr.get("payload").and_then(|v: &Value| v.as_str()) {
+            let prefix = addr.get("prefix").and_then(|v: &Value| v.as_str()).unwrap_or("kaspa");
+            return Some(format!("{}:{}", prefix, payload));
+        }
+    }
+    None
+}
+
 fn extract_amount(entry: &Value) -> Option<Sompi> {
     let utxo = entry.get("utxoEntry")?;
     let val = utxo.get("amount").or(utxo.get("amount_sompi"))?;
@@ -262,10 +298,10 @@ fn extract_amount(entry: &Value) -> Option<Sompi> {
     else if let Some(s) = val.as_str() { s.parse::<u64>().ok().map(Sompi) }
     else { None }
 }
+
 fn extract_daa_score(entry: &Value) -> Option<u64> {
     let val = entry.get("utxoEntry")?.get("blockDaaScore")?;
     if let Some(n) = val.as_u64() { Some(n) }
     else if let Some(s) = val.as_str() { s.parse::<u64>().ok() }
     else { None }
 }
-
