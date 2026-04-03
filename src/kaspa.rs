@@ -158,8 +158,8 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
             let amount_sompi = match extract_amount(entry) { Some(amt) => amt, None => continue };
             let daa_score = extract_daa_score(entry).unwrap_or(0);
             
-            if state.processed_txids.contains(&tx_id) { continue; }
-            state.processed_txids.insert(tx_id.clone());
+            if state.processed_txids.contains_key(&tx_id) { continue; }
+            state.processed_txids.insert(tx_id.clone(), std::time::Instant::now());
 
             let event = UtxoEvent { tx_id, address, amount_sompi, daa_score };
             
@@ -212,3 +212,4 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_f64()) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
+

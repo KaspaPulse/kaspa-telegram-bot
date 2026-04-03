@@ -1,4 +1,4 @@
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use sqlx::{SqlitePool, Row};
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -32,7 +32,7 @@ pub struct AppState {
     pub monitored_wallets: DashMap<String, WalletData>,
     pub active_trackers: DashMap<String, ActiveTracker>,
     pub pending_alerts: DashMap<String, PendingAlert>,
-    pub processed_txids: DashSet<String>,
+    pub processed_txids: DashMap<String, Instant>,
     pub is_monitoring: AtomicBool,
     pub admin_id: Option<i64>,
     pub start_time: Instant,
@@ -59,7 +59,7 @@ impl AppState {
             monitored_wallets: DashMap::new(),
             active_trackers: DashMap::new(),
             pending_alerts: DashMap::new(),
-            processed_txids: DashSet::new(),
+            processed_txids: DashMap::new(),
             is_monitoring: AtomicBool::new(true),
             admin_id,
             start_time: Instant::now(),
@@ -140,3 +140,4 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+

@@ -58,6 +58,37 @@ async fn main() {
     });
 
     // Extract the token safely ONLY at the exact moment of initializing the Bot client
+        // [ENTERPRISE FIX] Background Garbage Collector for Memory Leaks
+    let gc_state = state.clone();
+    let gc_shutdown = shutdown_token.clone();
+    tokio::spawn(async move {
+        // Run the Garbage Collector every 1 Hour
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600)); 
+        
+        loop {
+            tokio::select! {
+                _ = gc_shutdown.cancelled() => {
+                    tracing::info!("🛑 [GC] Garbage Collector shutting down safely.");
+                    break;
+                }
+                _ = interval.tick() => {
+                    let now = std::time::Instant::now();
+                    let before_count = gc_state.processed_txids.len();
+                    
+                    // Retain only TXIDs processed within the last 24 hours (86,400 seconds)
+                    gc_state.processed_txids.retain(|_, timestamp| {
+                        now.duration_since(*timestamp).as_secs() < 86400
+                    });
+                    
+                    let after_count = gc_state.processed_txids.len();
+                    if before_count > after_count {
+                        tracing::info!("🧹 [GC] Memory cleanup complete. Removed {} stale TXIDs from RAM.", before_count - after_count);
+                    }
+                }
+            }
+        }
+    });
+
     let bot_client = Bot::new(secret_token.expose_secret());
 
     let state_clone = state.clone();
@@ -71,5 +102,6 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state).await;
 }
+
 
 
