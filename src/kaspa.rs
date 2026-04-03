@@ -183,7 +183,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     // 1. Fetch live balance safely via centralized AppError system
     if let Ok(api_bal) = api.get_balance(&event.address).await {
         live_bal = Kaspa(api_bal);
-        live_bal = api_bal;
+        live_bal = Kaspa(api_bal);
     }
 
     // 2. Safely update RAM state
@@ -216,6 +216,7 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<Sompi> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_u64()).map(Sompi) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
+
 
 
 

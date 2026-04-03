@@ -1,3 +1,4 @@
+use sqlx::sqlite::SqlitePoolOptions;
 pub mod dag_buffer;
 use dotenvy::dotenv;
 use secrecy::{ExposeSecret, SecretString};
@@ -46,6 +47,7 @@ async fn main() {
         .expect("❌ FATAL ERROR: Failed to create or connect to SQLite database");
         
     let state = Arc::new(AppState::new(shutdown_token.clone(), db_pool).await);
+    let api = Arc::new(ApiManager::new());
     
 
     // Hook OS Signals (Ctrl+C) to the Cancellation Token
@@ -102,6 +104,7 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state).await;
 }
+
 
 
 
