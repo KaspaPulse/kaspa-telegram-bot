@@ -98,3 +98,19 @@ pub fn sanitize_html(input: &str) -> String {
          .replace("\"", "&quot;")
          .replace("'", "&#x27;")
 }
+
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+
+pub fn main_keyboard() -> InlineKeyboardMarkup {
+    let buttons = vec![
+        vec![
+            InlineKeyboardButton::callback("📊 Balances", "balances"),
+            InlineKeyboardButton::callback("🌍 Network", "network"),
+        ],
+        vec![
+            InlineKeyboardButton::callback("🏦 Supply", "supply"),
+            InlineKeyboardButton::callback("📈 Market", "market"),
+        ],
+    ];
+    InlineKeyboardMarkup::new(buttons)
+}

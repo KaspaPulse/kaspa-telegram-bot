@@ -11,7 +11,7 @@ pub mod kaspa;
 pub mod state;
 pub mod utils;
 
-use crate::api::ApiManager;
+
 use crate::state::AppState;
 
 #[tokio::main]
@@ -39,7 +39,7 @@ async fn main() {
     // Global Graceful Shutdown Token
     let shutdown_token = CancellationToken::new();
     let state = Arc::new(AppState::new(shutdown_token.clone()));
-    let api = Arc::new(ApiManager::new());
+    
 
     // Hook OS Signals (Ctrl+C) to the Cancellation Token
     let token_clone = shutdown_token.clone();
@@ -62,5 +62,5 @@ async fn main() {
     });
 
     // Start the Telegram Polling Engine
-    bot::start_telegram_bot(bot_client, state, api).await;
+    bot::start_telegram_bot(bot_client, state).await;
 }
