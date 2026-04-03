@@ -11,7 +11,7 @@ enum CacheType { Price, Market, Fees, Network, Supply, Dag }
 struct CacheEntry { data: Value, timestamp: Instant }
 
 pub struct ApiManager {
-    client: Client,
+    pub client: Client,
     cache: DashMap<CacheType, CacheEntry>,
 }
 
@@ -52,4 +52,5 @@ impl ApiManager {
         Ok(balance)
     }
 }
+
 

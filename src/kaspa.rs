@@ -118,7 +118,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
 }
 
 async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc::Sender<UtxoEvent>) {
-    if let Some(added) = payload.get("added").and_then(|v| v.as_array()) {
+    if let Some(added) = payload.get("added").and_then(|v: &Value| v.as_array()) {
         for entry in added {
             let tx_id = match extract_tx_id(entry) { Some(id) => id, None => continue };
             let address = match extract_address(entry) { Some(addr) => addr, None => continue };
@@ -203,14 +203,14 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
 
                     if let Ok(tx_res) = a_clone.client.get(&format!("https://api.kaspa.org/transactions/{}", t_id)).send().await {
                         if let Ok(tx_data) = tx_res.json::<Value>().await {
-                            if let Some(b_hash_arr) = tx_data.get("block_hash").and_then(|v| v.as_array()) {
-                                if let Some(b_hash_full) = b_hash_arr.get(0).and_then(|v| v.as_str()) {
+                            if let Some(b_hash_arr) = tx_data.get("block_hash").and_then(|v: &Value| v.as_array()) {
+                                if let Some(b_hash_full) = b_hash_arr.get(0).and_then(|v: &Value| v.as_str()) {
                                     tracing::info!("[API SUCCESS] Found Hashes for TX {}", t_id);
                                     let b_hash_display = format!("{}...{}", &b_hash_full[..8], &b_hash_full[b_hash_full.len()-8..]);
                                     let b_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", b_hash_display, b_hash_full);
 
                                     let mut a_hash_link = "`N/A`".to_string();
-                                    if let Some(a_hash) = tx_data.get("accepting_block_hash").and_then(|v| v.as_str()) {
+                                    if let Some(a_hash) = tx_data.get("accepting_block_hash").and_then(|v: &Value| v.as_str()) {
                                         let a_hash_display = format!("{}...{}", &a_hash[..8], &a_hash[a_hash.len()-8..]);
                                         a_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", a_hash_display, a_hash);
                                     }
@@ -218,11 +218,11 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                                     let mut mined_hash_link = "`Not Found`".to_string();
                                     if let Ok(block_res) = a_clone.client.get(&format!("https://api.kaspa.org/blocks/{}", b_hash_full)).send().await {
                                         if let Ok(block_data) = block_res.json::<Value>().await {
-                                            if let Some(blues) = block_data.get("merge_set_blues_hashes").and_then(|v| v.as_array()) {
+                                            if let Some(blues) = block_data.get("merge_set_blues_hashes").and_then(|v: &Value| v.as_array()) {
                                                 let mut idx = 0;
-                                                if let Some(outputs) = tx_data.get("outputs").and_then(|v| v.as_array()) {
+                                                if let Some(outputs) = tx_data.get("outputs").and_then(|v: &Value| v.as_array()) {
                                                     for (i, out) in outputs.iter().enumerate() {
-                                                        if out.get("script_public_key_address").and_then(|v| v.as_str()) == Some(addr.as_str()) {
+                                                        if out.get("script_public_key_address").and_then(|v: &Value| v.as_str()) == Some(addr.as_str()) {
                                                             idx = i; break;
                                                         }
                                                     }
@@ -252,9 +252,9 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
 
 fn extract_tx_id(entry: &Value) -> Option<String> {
     let outpoint = entry.get("outpoint")?;
-    outpoint.get("transactionId").or(outpoint.get("transaction_id")).and_then(|v| v.as_str().map(|s| s.to_string()))
+    outpoint.get("transactionId").or(outpoint.get("transaction_id")).and_then(|v: &Value| v.as_str().map(|s| s.to_string()))
 }
-fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
+fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v: &Value| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<Sompi> {
     let utxo = entry.get("utxoEntry")?;
     let val = utxo.get("amount").or(utxo.get("amount_sompi"))?;
@@ -268,3 +268,4 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
     else if let Some(s) = val.as_str() { s.parse::<u64>().ok() }
     else { None }
 }
+
