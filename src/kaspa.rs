@@ -1,91 +1,98 @@
-#![allow(deprecated, unused_variables)]
-use chrono::Utc;
-use teloxide::types::ParseMode;
-use crate::utils::helpers::format_short_wallet;
-use futures_util::{SinkExt, StreamExt};
-use reqwest::Client;
-use serde_json::{json, Value};
 use std::sync::Arc;
-use std::time::Duration;
-use teloxide::prelude::*;
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use futures_util::{StreamExt, SinkExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use serde_json::{json, Value};
+use teloxide::prelude::*;
+use teloxide::types::ParseMode;
+use tokio::sync::{mpsc, Semaphore};
+use std::time::Duration;
+use chrono::Utc;
 
-use crate::state::{AppState, PendingAlert};
+use crate::state::AppState;
+use crate::utils::helpers::format_short_wallet;
+use crate::api::ApiManager;
 
-#[allow(dead_code)]
-async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
-    if let Ok(mut request) = ws_url.into_client_request() {
-        request
-            .headers_mut()
-            .insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
-        if let Ok((mut ws_stream, _)) = connect_async(request).await {
-            let req = json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "getBlock",
-                "params": { "hash": hash, "includeTransactions": false }
-            });
-            if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
-                if let Some(Ok(Message::Text(res))) = tokio::time::timeout(std::time::Duration::from_secs(120), ws_stream.next()).await.ok().flatten() {
-                    if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
-                        if let Some(result) = parsed.get("result") {
-                            if let Some(blues) = result
-                                .get("block")
-                                .and_then(|b| b.get("verboseData"))
-                                .and_then(|v| v.get("mergeSetBluesHashes"))
-                                .and_then(|h| h.as_array())
-                            {
-                                if !blues.is_empty() {
-                                    return blues[0].as_str().map(|s| s.to_string());
-                                }
-                            }
-                        }
+// Event Payload Struct
+#[derive(Debug, Clone)]
+pub struct UtxoEvent {
+    pub tx_id: String,
+    pub address: String,
+    pub amount_sompi: f64,
+    pub daa_score: u64,
+}
+
+#[tracing::instrument(skip(state, bot, api))]
+pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
+    let ws_url = std::env::var("WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
+
+    // [ENTERPRISE FIX] MPSC Channel to absorb Event Floods (Buffer: 5000 events)
+    let (tx_event, mut rx_event) = mpsc::channel::<UtxoEvent>(5000);
+
+    // [ENTERPRISE FIX] Semaphore to strictly limit concurrent API requests (Max 10)
+    let api_semaphore = Arc::new(Semaphore::new(10));
+
+    // Background Worker Pool to process queued events at a safe pace
+    let worker_state = state.clone();
+    let worker_bot = bot.clone();
+    let worker_api = api.clone();
+    let worker_shutdown = state.shutdown_token.clone();
+
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = worker_shutdown.cancelled() => {
+                    tracing::warn!("🛑 [WORKER] Shutting down event processor pool.");
+                    break;
+                }
+                event_opt = rx_event.recv() => {
+                    if let Some(event) = event_opt {
+                        let sem_clone = api_semaphore.clone();
+                        let s_clone = worker_state.clone();
+                        let b_clone = worker_bot.clone();
+                        let a_clone = worker_api.clone();
+                        
+                        // Spawn individual processing task, but bounded by Semaphore
+                        tokio::spawn(async move {
+                            // 20-second consensus buffer
+                            tokio::time::sleep(Duration::from_secs(20)).await;
+                            
+                            // Acquire permit before hitting the API or DB
+                            let _permit = match sem_clone.acquire().await {
+                                Ok(p) => p,
+                                Err(_) => return,
+                            };
+                            
+                            process_reward_event(event, s_clone, b_clone, a_clone).await;
+                        });
                     }
                 }
             }
         }
-    }
-    None
-}
+    });
 
-pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
-    let ws_url = std::env::var("WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
-    let http_client = Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .unwrap();
-
+    // WebSocket Reconnection Loop
     loop {
-        if !state
-            .is_monitoring
-            .load(std::sync::atomic::Ordering::Relaxed)
-        {
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            continue;
+        if state.shutdown_token.is_cancelled() { return; }
+        if !state.is_monitoring.load(std::sync::atomic::Ordering::Relaxed) { 
+            tokio::time::sleep(Duration::from_secs(5)).await; 
+            continue; 
         }
+        
         tracing::info!("[NODE] Connecting to Node02 wRPC at {}...", ws_url);
 
         let mut request = match ws_url.clone().into_client_request() {
             Ok(req) => req,
-            Err(e) => {
-                tracing::error!("❌ [NODE] Invalid URL: {}", e);
-                tokio::time::sleep(Duration::from_secs(5)).await;
-                continue;
-            }
+            Err(e) => { tracing::error!("❌ [NODE] Invalid URL: {}", e); tokio::time::sleep(Duration::from_secs(5)).await; continue; }
         };
-        request
-            .headers_mut()
-            .insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
+        
+        if let Ok(header_val) = "wrpc-json".parse() { request.headers_mut().insert("sec-websocket-protocol", header_val); }
 
         match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
                 tracing::info!("✅ [NODE] Connected! Handshaking...");
-                let addresses: Vec<String> = state
-                    .monitored_wallets
-                    .iter()
-                    .map(|kv| kv.key().clone())
-                    .collect();
+
+                let addresses: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                 if !addresses.is_empty() {
                     let sub_req = json!({
                         "jsonrpc": "2.0",
@@ -96,150 +103,112 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
-                while let Some(msg) = tokio::time::timeout(std::time::Duration::from_secs(120), ws_stream.next()).await.ok().flatten() {
-                    match msg {
-                        Ok(Message::Text(text)) => {
-                            if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                if let Some(method) = parsed.get("method").and_then(|m| m.as_str())
-                                {
-                                    if method == "utxosChangedNotification" {
-                                        if let Some(params) = parsed.get("params") {
-                                            handle_utxos_changed(
-                                                params,
-                                                state.clone(),
-                                                bot.clone(),
-                                                http_client.clone(),
-                                                ws_url.clone(),
-                                            )
-                                            .await;
+                loop {
+                    tokio::select! {
+                        _ = state.shutdown_token.cancelled() => {
+                            tracing::warn!("🛑 [NODE] Shutdown signal received. Safely closing WebSocket...");
+                            let _ = ws_stream.close(None).await;
+                            tracing::info!("💾 [NODE] Flushing all in-memory data to disk...");
+                            state.save_wallets().await;
+                            tracing::info!("✅ [NODE] Engine stopped securely. Safe to exit.");
+                            return;
+                        }
+                        msg = ws_stream.next() => {
+                            match msg {
+                                Some(Ok(Message::Text(text))) => {
+                                    if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
+                                        if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
+                                            if method == "utxosChangedNotification" {
+                                                if let Some(params) = parsed.get("params") {
+                                                    // Hand over to the non-blocking async queue
+                                                    parse_utxos_and_queue(params, &state, &tx_event).await;
+                                                }
+                                            }
+                                        } else if let Some(result) = parsed.get("result") {
+                                             tracing::info!("📥 [NODE ACK] Subscription Successful");
                                         }
                                     }
-                                } else if let Some(result) = parsed.get("result") {
-                                    tracing::info!(
-                                        "📥 [NODE ACK] Subscription Successful: {:?}",
-                                        result
-                                    );
                                 }
+                                Some(Ok(Message::Close(c))) => { tracing::warn!("⚠️ [NODE] Closed: {:?}", c); break; }
+                                Some(Err(e)) => { tracing::error!("❌ [NODE] WS Error: {}", e); break; }
+                                None => { break; }
+                                _ => {} 
                             }
                         }
-                        Ok(Message::Close(c)) => {
-                            tracing::warn!("⚠️ [NODE] Closed: {:?}", c);
-                            break;
-                        }
-                        Err(e) => {
-                            tracing::error!("❌ [NODE] WS Error: {}", e);
-                            break;
-                        }
-                        _ => {}
                     }
                 }
             }
-            Err(e) => {
-                tracing::error!("❌ [NODE FATAL] Fail: {}", e);
-            }
+            Err(e) => { tracing::error!("❌ [NODE FATAL] Fail: {}", e); }
         }
-        if state.shutdown_token.is_cancelled() {
-            return;
-        }
+        if state.shutdown_token.is_cancelled() { return; }
         tracing::warn!("🔄 Reconnecting in 5s...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }
 
-async fn handle_utxos_changed(
-    payload: &Value,
-    state: Arc<AppState>,
-    bot: Bot,
-    http_client: Client,
-    ws_url: String,
-) {
+// Parses raw JSON and pushes to the MPSC channel rapidly (non-blocking)
+async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc::Sender<UtxoEvent>) {
     if let Some(added) = payload.get("added").and_then(|v| v.as_array()) {
         for entry in added {
-            let tx_id = match extract_tx_id(entry) {
-                Some(id) => id,
-                None => continue,
-            };
-            let address = match extract_address(entry) {
-                Some(addr) => addr,
-                None => continue,
-            };
-            if !state.monitored_wallets.contains_key(&address) {
-                continue;
-            }
-            let amount_sompi = match extract_amount(entry) {
-                Some(amt) => amt,
-                None => continue,
-            };
+            let tx_id = match extract_tx_id(entry) { Some(id) => id, None => continue };
+            let address = match extract_address(entry) { Some(addr) => addr, None => continue };
+            
+            if !state.monitored_wallets.contains_key(&address) { continue; }
+            
+            let amount_sompi = match extract_amount(entry) { Some(amt) => amt, None => continue };
             let daa_score = extract_daa_score(entry).unwrap_or(0);
-            if state.processed_txids.contains_key(&tx_id) {
-                continue;
+            
+            if state.processed_txids.contains(&tx_id) { continue; }
+            state.processed_txids.insert(tx_id.clone());
+
+            let event = UtxoEvent { tx_id, address, amount_sompi, daa_score };
+            
+            // Non-blocking send. If buffer is full, it drops to protect RAM (Backpressure)
+            if let Err(e) = tx.try_send(event) {
+                tracing::error!("🚨 [OVERLOAD] MPSC Queue is full! Dropping UTXO event to prevent OOM: {}", e);
             }
-            state
-                .pending_alerts
-                .insert(tx_id.clone(), PendingAlert { daa_score, timestamp: chrono::Utc::now().timestamp() as u64 });
-            let state_clone = state.clone();
-            let bot_clone = bot.clone();
-            let http_clone = http_client.clone();
-            let tx_id_clone = tx_id.clone();
-            let address_clone = address.clone();
-            let ws_clone = ws_url.clone();
-            tokio::spawn(async move {
-                tokio::time::sleep(Duration::from_secs(20)).await;
-                state_clone.processed_txids.insert(tx_id_clone.clone(), chrono::Utc::now().timestamp() as u64);
-                let final_daa = match state_clone.pending_alerts.remove(&tx_id_clone) {
-                    Some(alert) => alert.1.daa_score,
-                    None => return,
-                };
-                let exact_reward = amount_sompi / 100_000_000.0;
-                let mut live_bal = 0.0;
-                if let Some(mut wallet) = state_clone.monitored_wallets.get_mut(&address_clone) {
-                    live_bal = wallet.last_balance + exact_reward;
-                    wallet.last_balance = live_bal;
-                }
-                state_clone.sync_wallet_to_db(&address_clone).await;
-                let dt_str = format!("{} UTC", Utc::now().format("%Y-%m-%d %H:%M:%S"));
-                let short_wallet = format_short_wallet(&address_clone);
-                let build_msg = |b: &str, a: &str, m: &str| -> String {
-                    format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{:.8} KAS`\n*Live Balance:* `{:.8} KAS`\n━━━━━━━━━━━━━━━━━━\n*Mined Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", dt_str, short_wallet, format!("https://kaspa.stream/addresses/{}", address_clone), exact_reward, live_bal, m, a, final_daa)
-                };
-                let subscribers = match state_clone.monitored_wallets.get(&address_clone) {
-                    Some(w) => w.chat_ids.clone(),
-                    None => return,
-                };
-                for chat_id in subscribers {
-                    // [BEST PRACTICE] Telegram API Rate Limiting: Max 30 msgs/sec
-                    tokio::time::sleep(Duration::from_millis(40)).await;
-                    let _ = bot_clone
-                        .send_message(ChatId(chat_id), build_msg("...", "...", "..."))
-                        .parse_mode(ParseMode::Markdown)
-                        .await;
-                }
-            });
         }
     }
 }
 
-fn extract_tx_id(entry: &Value) -> Option<String> {
-    entry
-        .get("outpoint")
-        .and_then(|o| o.get("transactionId"))
-        .and_then(|v| v.as_str().map(|s| s.to_string()))
-}
-fn extract_address(entry: &Value) -> Option<String> {
-    entry
-        .get("address")
-        .and_then(|v| v.as_str().map(|s| s.to_string()))
-}
-fn extract_amount(entry: &Value) -> Option<f64> {
-    entry
-        .get("utxoEntry")
-        .and_then(|u| u.get("amount"))
-        .and_then(|v| v.as_f64())
-}
-fn extract_daa_score(entry: &Value) -> Option<u64> {
-    entry
-        .get("utxoEntry")
-        .and_then(|u| u.get("blockDaaScore"))
-        .and_then(|v| v.as_u64())
+// Actual API fetching and DB updating bounded by Semaphore
+#[tracing::instrument(skip(state, bot, api))]
+async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
+    let exact_reward = event.amount_sompi / 100_000_000.0;
+    let mut live_bal = 0.0;
+    
+    // 1. Fetch live balance safely via centralized AppError system
+    if let Ok(api_bal) = api.get_balance(&event.address).await {
+        live_bal = api_bal;
+    }
+
+    // 2. Safely update RAM state
+    if let Some(mut wallet) = state.monitored_wallets.get_mut(&event.address) {
+        if live_bal == 0.0 { live_bal = wallet.last_balance + exact_reward; }
+        wallet.last_balance = live_bal;
+    }
+    
+    // 3. Atomic SQLite DB flush for this specific wallet
+    state.sync_wallet_to_db(&event.address).await;
+
+    let dt_str = format!("{} UTC", Utc::now().format("%Y-%m-%d %H:%M:%S"));
+    let short_wallet = format_short_wallet(&event.address);
+    
+    let build_msg = |b: &str, a: &str, m: &str| -> String {
+        format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{:.8} KAS`\n*Live Balance:* `{:.8} KAS`\n━━━━━━━━━━━━━━━━━━\n*Mined Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", 
+        dt_str, short_wallet, format!("https://kaspa.stream/addresses/{}", event.address), exact_reward, live_bal, m, a, event.daa_score)
+    };
+
+    let subscribers = match state.monitored_wallets.get(&event.address) { Some(w) => w.chat_ids.clone(), None => return };
+    
+    for chat_id in subscribers {
+        // [BEST PRACTICE] Telegram API Rate Limiting: Max 30 msgs/sec
+        tokio::time::sleep(Duration::from_millis(40)).await;
+        let _ = bot.send_message(ChatId(chat_id), build_msg("...", "...", "...")).parse_mode(ParseMode::Markdown).await;
+    }
 }
 
+fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_then(|o| o.get("transactionId")).and_then(|v| v.as_str().map(|s| s.to_string())) }
+fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
+fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_f64()) }
+fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }

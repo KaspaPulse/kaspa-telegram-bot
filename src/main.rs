@@ -65,10 +65,11 @@ async fn main() {
 
     // Spawn the Kaspa wRPC Engine in the background
     tokio::spawn(async move {
-        kaspa::start_kaspa_engine(state_clone, bot_clone).await;
+        let api_clone = api.clone(); kaspa::start_kaspa_engine(state_clone, bot_clone, api_clone).await;
     });
 
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state).await;
 }
+
 
