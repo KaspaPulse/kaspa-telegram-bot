@@ -2,7 +2,7 @@ use serde_json::Value;
 use std::time::{Duration, Instant};
 use dashmap::DashMap;
 use reqwest::Client;
-use crate::utils::errors::{AppError, AppResult};
+use crate::utils::errors::AppResult;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,3 +52,4 @@ impl ApiManager {
         Ok(balance)
     }
 }
+
