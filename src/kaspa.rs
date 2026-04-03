@@ -86,12 +86,12 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [CRITICAL FIX]: Kaspa node strictly requires "Request" suffix!
+                                // [CRITICAL FIX]: wRPC JSON-RPC strict Array format
                                 let sub_req = json!({
                                     "jsonrpc": "2.0",
                                     "id": 2,
                                     "method": "notifyUtxosChangedRequest", 
-                                    "params": { "addresses": addrs }
+                                    "params": [{ "addresses": addrs }] // Must be inside an array!
                                 });
                                 let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                                 tracing::info!("🔄 [NODE] Requested Subscription for {} wallets.", current_count);
@@ -105,36 +105,49 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                             match msg {
                                 Some(Ok(Message::Text(text))) => {
                                     if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                        // 1. Catch and log node errors
-                                        if let Some(err) = parsed.get("error") {
-                                            if !err.is_null() {
-                                                tracing::error!("❌ [NODE RPC ERROR]: {}", err);
-                                            }
-                                        }
-                                        
-                                        // 2. Catch Success ACKs
-                                        if let Some(id) = parsed.get("id").and_then(|i: &Value| i.as_u64()) {
-                                            if id == 2 && parsed.get("error").map_or(true, |e| e.is_null()) {
-                                                tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
-                                            }
-                                        }
-
-                                        // 3. Process Notifications
+                                        // 1. Process Notifications
                                         if let Some(method) = parsed.get("method").and_then(|m: &Value| m.as_str()) {
                                             if method == "utxosChangedNotification" {
-                                                parse_utxos_and_queue(parsed.get("params").unwrap_or(&json!({})), &state, &tx_event).await;
+                                                if let Some(params) = parsed.get("params").and_then(|p| p.as_array()) {
+                                                    if let Some(notification) = params.get(0) {
+                                                        parse_utxos_and_queue(notification, &state, &tx_event).await;
+                                                    }
+                                                }
+                                            }
+                                        } 
+                                        // 2. Process Response ACKs / Errors
+                                        else if let Some(id) = parsed.get("id").and_then(|i: &Value| i.as_u64()) {
+                                            if id == 2 {
+                                                if let Some(err) = parsed.get("error") {
+                                                    if !err.is_null() {
+                                                        tracing::error!("❌ [NODE RPC ERROR]: {}", err);
+                                                        last_wallet_count = 0; // Reset so it tries again
+                                                    }
+                                                } else {
+                                                    tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                Some(Ok(Message::Close(_))) | None => break,
+                                Some(Ok(Message::Close(c))) => { 
+                                    tracing::warn!("⚠️ [NODE] Connection closed by server: {:?}", c); 
+                                    break; 
+                                }
+                                Some(Err(e)) => { 
+                                    tracing::error!("❌ [NODE] WebSocket Error: {}", e); 
+                                    break; 
+                                }
+                                None => break,
                                 _ => {}
                             }
                         }
                     }
                 }
             }
-            Err(_) => {}
+            Err(e) => {
+                tracing::error!("❌ [NODE FATAL] Could not connect: {}", e);
+            }
         }
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
@@ -171,12 +184,10 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     let exact_reward: Kaspa = event.amount.into();
     let mut live_bal = Kaspa(0.0);
 
-    // [SPEED FIX] Quick 3-second timeout for balance fetch to ensure INSTANT notification
     if let Ok(Ok(bal)) = tokio::time::timeout(Duration::from_secs(3), api.get_balance(&event.address)).await {
         if bal > 0.0 { live_bal = Kaspa(bal); }
     }
     
-    // Fallback to cached balance if API is slow
     if let Some(mut wallet) = state.monitored_wallets.get_mut(&event.address) {
         if live_bal.0 == 0.0 { live_bal = Kaspa(wallet.last_balance + exact_reward.0); }
         wallet.last_balance = live_bal.0;
