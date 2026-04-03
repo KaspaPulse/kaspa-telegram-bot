@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::sync::Semaphore;
 
 pub struct DagBuffer {
-    pending_tasks: DashMap<String, JoinHandle<()>>,
+    pub pending_tasks: DashMap<String, JoinHandle<()>>,
     // [ANTI-SPAM] Limits the maximum number of concurrent tracking tasks
     semaphore: Arc<Semaphore>, 
 }

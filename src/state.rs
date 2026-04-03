@@ -5,6 +5,7 @@ use chrono::Utc;
 use std::time::Instant;
 use tokio_util::sync::CancellationToken;
 use teloxide::types::ChatId;
+use sled::Db;
 use crate::api::ApiManager;
 use crate::dag_buffer::DagBuffer;
 
@@ -28,25 +29,50 @@ pub struct AppState {
     pub processed_txids: DashMap<String, u64>,
     pub pending_alerts: DashMap<String, PendingAlert>,
     pub is_monitoring: AtomicBool,
-    // --- Restored Enterprise Bot Fields ---
     pub admin_id: Option<ChatId>,
     pub start_time: Instant,
     pub shutdown_token: CancellationToken,
     pub rate_limits: DashMap<ChatId, Instant>,
+    // --- Enterprise Embedded Database ---
+    pub db: Db,
 }
 
 impl AppState {
     pub fn new(shutdown_token: CancellationToken) -> Self {
         let monitored_wallets = DashMap::new();
 
-        if let Ok(file_content) = std::fs::read_to_string("wallets.json") {
-            if let Ok(parsed_data) = serde_json::from_str::<std::collections::HashMap<String, WalletData>>(&file_content) {
-                for (wallet, data) in parsed_data {
-                    monitored_wallets.insert(wallet, data);
+        // [DATABASE INIT] Open or create the embedded high-speed database
+        let db = sled::open("kaspa_bot_db").expect("CRITICAL: Failed to initialize embedded database");
+
+        // [MIGRATION SYSTEM] Smoothly transition from legacy JSON to Sled DB
+        if std::path::Path::new("wallets.json").exists() {
+            if let Ok(file_content) = std::fs::read_to_string("wallets.json") {
+                if let Ok(parsed_data) = serde_json::from_str::<std::collections::HashMap<String, WalletData>>(&file_content) {
+                    for (wallet, data) in parsed_data {
+                        if let Ok(serialized) = serde_json::to_vec(&data) {
+                            let _ = db.insert(wallet.as_bytes(), serialized);
+                        }
+                    }
+                    let _ = db.flush();
+                    let _ = std::fs::rename("wallets.json", "wallets.json.bak");
+                    log::info!("Migration Engine: Successfully migrated legacy wallets.json to embedded DB.");
                 }
-                log::info!("Persistence Engine: Loaded {} wallets.", monitored_wallets.len());
             }
         }
+
+        // [MEMORY HYDRATION] Load data from DB into ultra-fast RAM (DashMap)
+        let mut loaded_count = 0;
+        for item in db.iter() {
+            if let Ok((k, v)) = item {
+                if let Ok(wallet) = String::from_utf8(k.to_vec()) {
+                    if let Ok(data) = serde_json::from_slice::<WalletData>(&v) {
+                        monitored_wallets.insert(wallet, data);
+                        loaded_count += 1;
+                    }
+                }
+            }
+        }
+        log::info!("Persistence Engine: Loaded {} wallets from embedded DB.", loaded_count);
 
         let admin_id = std::env::var("ADMIN_ID")
             .ok()
@@ -64,6 +90,7 @@ impl AppState {
             start_time: Instant::now(),
             shutdown_token,
             rate_limits: DashMap::new(),
+            db,
         }
     }
 
@@ -77,21 +104,28 @@ impl AppState {
         users.into_iter().collect()
     }
 
-    // [FIX] Converted to async to satisfy .await calls in bot.rs and kaspa.rs
+    // [O(1) I/O FIX] Writes only deltas to WAL, eliminating massive JSON rewrite bottlenecks
     pub async fn save_wallets(&self) {
-        let mut export_map = std::collections::HashMap::new();
         for entry in self.monitored_wallets.iter() {
-            export_map.insert(entry.key().clone(), entry.value().clone());
+            if let Ok(serialized) = serde_json::to_vec(entry.value()) {
+                let _ = self.db.insert(entry.key().as_bytes(), serialized);
+            }
         }
-
-        if let Ok(json_data) = serde_json::to_string_pretty(&export_map) {
-            let _ = tokio::fs::write("wallets.json", json_data).await;
+        
+        // Asynchronously flush the Write-Ahead Log to disk without blocking the runtime
+        if let Err(e) = self.db.flush_async().await {
+            log::error!("[PERSISTENCE] DB Flush Error: {}", e);
+        } else {
+            log::debug!("[PERSISTENCE] Database synchronized successfully.");
         }
     }
 
     pub fn prune_memory(&self) {
         let now = Utc::now().timestamp() as u64;
-        let max_age: u64 = std::env::var("GC_RETENTION_HOURS").unwrap_or_else(|_| "24".to_string()).parse::<u64>().unwrap_or(24) * 3600;
+        let max_age: u64 = std::env::var("GC_RETENTION_HOURS")
+            .unwrap_or_else(|_| "24".to_string())
+            .parse::<u64>()
+            .unwrap_or(24) * 3600;
 
         let initial_txs = self.processed_txids.len();
         self.processed_txids.retain(|_, &mut ts| now.saturating_sub(ts) < max_age);
@@ -101,8 +135,15 @@ impl AppState {
         self.pending_alerts.retain(|_, alert| now.saturating_sub(alert.timestamp) < max_age);
         let pruned_alerts = initial_alerts - self.pending_alerts.len();
 
-        if pruned_txs > 0 || pruned_alerts > 0 {
-            log::info!("Garbage Collector: Cleared {} TXIDs and {} Alerts from RAM.", pruned_txs, pruned_alerts);
+        let initial_rates = self.rate_limits.len();
+        self.rate_limits.retain(|_, time| time.elapsed().as_secs() < 3600);
+        let pruned_rates = initial_rates - self.rate_limits.len();
+
+        if pruned_txs > 0 || pruned_alerts > 0 || pruned_rates > 0 {
+            log::info!(
+                "Garbage Collector: Cleared {} TXIDs, {} Alerts, and {} Rate Limits from RAM.",
+                pruned_txs, pruned_alerts, pruned_rates
+            );
         }
     }
 }

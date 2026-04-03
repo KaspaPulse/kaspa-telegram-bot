@@ -27,7 +27,7 @@ async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
                 "params": { "hash": hash, "includeTransactions": false }
             });
             if ws_stream.send(Message::Text(req.to_string())).await.is_ok() {
-                if let Some(Ok(Message::Text(res))) = ws_stream.next().await {
+                if let Some(Ok(Message::Text(res))) = tokio::time::timeout(std::time::Duration::from_secs(120), ws_stream.next()).await.ok().flatten() {
                     if let Ok(parsed) = serde_json::from_str::<Value>(&res) {
                         if let Some(result) = parsed.get("result") {
                             if let Some(blues) = result
@@ -96,7 +96,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                     let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
                 }
 
-                while let Some(msg) = ws_stream.next().await {
+                while let Some(msg) = tokio::time::timeout(std::time::Duration::from_secs(120), ws_stream.next()).await.ok().flatten() {
                     match msg {
                         Ok(Message::Text(text)) => {
                             if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
