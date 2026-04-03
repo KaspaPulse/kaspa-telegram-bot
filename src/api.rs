@@ -1,4 +1,5 @@
 use reqwest::Client;
+use crate::utils::errors::{AppError, AppResult};
 use serde_json::Value;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -46,27 +47,27 @@ impl ApiManager {
         }
     }
 
-    pub async fn get_price(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_price(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/price", CacheType::Price)
             .await
     }
-    pub async fn get_market(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_market(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/marketcap", CacheType::Market)
             .await
     }
-    pub async fn get_fees(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_fees(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/fee-estimate", CacheType::Fees)
             .await
     }
-    pub async fn get_network(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_network(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/hashrate", CacheType::Network)
             .await
     }
-    pub async fn get_supply(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_supply(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/coinsupply", CacheType::Supply)
             .await
     }
-    pub async fn get_dag(&self) -> Result<Value, reqwest::Error> {
+    pub async fn get_dag(&self) -> AppResult<Value> {
         self.fetch_with_cache("https://api.kaspa.org/info/blockdag", CacheType::Dag)
             .await
     }
@@ -82,7 +83,7 @@ impl ApiManager {
         &self,
         url: &str,
         cache_type: CacheType,
-    ) -> Result<Value, reqwest::Error> {
+    ) -> AppResult<Value> {
         let cache_lock = match cache_type {
             CacheType::Price => &self.price_cache,
             CacheType::Market => &self.market_cache,
@@ -122,3 +123,4 @@ impl ApiManager {
         }
     }
 }
+
