@@ -1,8 +1,8 @@
+use dotenvy::dotenv;
+use secrecy::{ExposeSecret, SecretString};
 use std::sync::Arc;
 use teloxide::prelude::*;
-use dotenvy::dotenv;
 use tokio_util::sync::CancellationToken;
-use secrecy::{SecretString, ExposeSecret};
 
 pub mod api;
 pub mod bot;
@@ -10,28 +10,28 @@ pub mod kaspa;
 pub mod state;
 pub mod utils;
 
-use crate::state::AppState;
 use crate::api::ApiManager;
+use crate::state::AppState;
 
 #[tokio::main]
 async fn main() {
     // Load Environment Variables
     dotenv().ok();
-    
+
     // [ENTERPRISE FIX] Initialize Tracing (Replaces old env_logger)
     tracing_subscriber::fmt()
         .with_target(false)
         .with_thread_ids(true)
         .with_level(true)
         .init();
-        
+
     tracing::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
 
     // [ENTERPRISE FIX] Secure Secret Management using SecretString
     let raw_token = std::env::var("BOT_TOKEN")
         .or_else(|_| std::env::var("TELOXIDE_TOKEN"))
         .expect("❌ FATAL ERROR: BOT_TOKEN is missing in .env file");
-        
+
     let secret_token = SecretString::from(raw_token);
     tracing::info!("🔐 Bot Token securely loaded into Zeroized Memory.");
 
@@ -51,10 +51,10 @@ async fn main() {
 
     // Extract the token safely ONLY at the exact moment of initializing the Bot client
     let bot_client = Bot::new(secret_token.expose_secret());
-    
+
     let state_clone = state.clone();
     let bot_clone = bot_client.clone();
-    
+
     // Spawn the Kaspa wRPC Engine in the background
     tokio::spawn(async move {
         kaspa::start_kaspa_engine(state_clone, bot_clone).await;

@@ -1,14 +1,24 @@
-use serde_json::Value;
-use std::time::{Duration, Instant};
+use crate::utils::errors::AppResult;
 use dashmap::DashMap;
 use reqwest::Client;
-use crate::utils::errors::{AppError, AppResult};
+use serde_json::Value;
+use std::time::{Duration, Instant};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum CacheType { Price, Market, Fees, Network, Supply, Dag }
+enum CacheType {
+    Price,
+    Market,
+    Fees,
+    Network,
+    Supply,
+    Dag,
+}
 
-struct CacheEntry { data: Value, timestamp: Instant }
+struct CacheEntry {
+    data: Value,
+    timestamp: Instant,
+}
 
 pub struct ApiManager {
     client: Client,
@@ -18,7 +28,10 @@ pub struct ApiManager {
 impl ApiManager {
     pub fn new() -> Self {
         Self {
-            client: Client::builder().timeout(Duration::from_secs(5)).build().unwrap_or_default(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()
+                .unwrap_or_default(),
             cache: DashMap::new(),
         }
     }
@@ -31,22 +44,47 @@ impl ApiManager {
         }
         // The '?' operator now automatically converts reqwest::Error into AppError::Api
         let res = self.client.get(url).send().await?.json::<Value>().await?;
-        self.cache.insert(cache_type, CacheEntry { data: res.clone(), timestamp: Instant::now() });
+        self.cache.insert(
+            cache_type,
+            CacheEntry {
+                data: res.clone(),
+                timestamp: Instant::now(),
+            },
+        );
         Ok(res)
     }
 
-    pub async fn get_price(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/price", CacheType::Price).await }
+    pub async fn get_price(&self) -> AppResult<Value> {
+        self.fetch_with_cache("https://api.kaspa.org/info/price", CacheType::Price)
+            .await
+    }
     #[allow(dead_code)]
-    pub async fn get_market(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/marketcap", CacheType::Market).await }
+    pub async fn get_market(&self) -> AppResult<Value> {
+        self.fetch_with_cache("https://api.kaspa.org/info/marketcap", CacheType::Market)
+            .await
+    }
     #[allow(dead_code)]
-    pub async fn get_fees(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/fee-estimate", CacheType::Fees).await }
-    pub async fn get_network(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/hashrate", CacheType::Network).await }
-    pub async fn get_supply(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/coinsupply/circulating", CacheType::Supply).await }
-    
+    pub async fn get_fees(&self) -> AppResult<Value> {
+        self.fetch_with_cache("https://api.kaspa.org/info/fee-estimate", CacheType::Fees)
+            .await
+    }
+    pub async fn get_network(&self) -> AppResult<Value> {
+        self.fetch_with_cache("https://api.kaspa.org/info/hashrate", CacheType::Network)
+            .await
+    }
+    pub async fn get_supply(&self) -> AppResult<Value> {
+        self.fetch_with_cache(
+            "https://api.kaspa.org/info/coinsupply/circulating",
+            CacheType::Supply,
+        )
+        .await
+    }
+
     pub async fn get_balance(&self, addr: &str) -> AppResult<f64> {
         let url = format!("https://api.kaspa.org/addresses/{}/balance", addr);
         let res = self.client.get(&url).send().await?.json::<Value>().await?;
-        let balance = res.get("balance")
+        let balance = res
+            .get("balance")
             .and_then(|v| v.as_f64())
             .map(|b| b / 100_000_000.0)
             .unwrap_or(0.0);

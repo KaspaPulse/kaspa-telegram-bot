@@ -1,17 +1,17 @@
-#![allow(deprecated, unused_variables)]
+﻿#![allow(deprecated, unused_variables)]
 use chrono::Utc;
+use teloxide::types::ParseMode;
+use crate::utils::helpers::format_short_wallet;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
 use teloxide::prelude::*;
-use teloxide::types::ParseMode;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
 use crate::state::{AppState, PendingAlert};
-use crate::utils::helpers::format_short_wallet;
 
 #[allow(dead_code)]
 async fn fetch_local_block(hash: &str, ws_url: &str) -> Option<String> {
@@ -138,7 +138,9 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                 tracing::error!("❌ [NODE FATAL] Fail: {}", e);
             }
         }
-        if state.shutdown_token.is_cancelled() { return; }
+        if state.shutdown_token.is_cancelled() {
+            return;
+        }
         tracing::warn!("🔄 Reconnecting in 5s...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
@@ -240,8 +242,3 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
-
-
-
-
-
