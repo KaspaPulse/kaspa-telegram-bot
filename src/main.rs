@@ -1,11 +1,10 @@
-﻿pub mod dag_buffer;
 use std::sync::Arc;
 use teloxide::prelude::*;
 use dotenvy::dotenv;
 use tokio_util::sync::CancellationToken;
 use secrecy::{SecretString, ExposeSecret};
 use sqlx::sqlite::SqlitePoolOptions;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub mod api;
 pub mod bot;
@@ -23,19 +22,23 @@ async fn main() {
     let file_appender = tracing_appender::rolling::never(".", "kaspa_bot.log");
     let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
     
-    let stdout_layer = tracing_subscriber::fmt::layer().with_thread_ids(true);
-    let file_layer = tracing_subscriber::fmt::layer().with_writer(file_writer).with_ansi(false);
+    let stdout_layer = tracing_subscriber::fmt::layer().with_target(false).without_time();
+    let file_layer = tracing_subscriber::fmt::layer().with_writer(file_writer).with_ansi(false).with_target(false);
+
+    // [ENTERPRISE FIX] Block all noise from hyper, reqwest, and sqlx. Only show our bot's INFO logs.
+    let filter = EnvFilter::new("info,hyper=off,reqwest=off,sqlx=off,rustls=off,tokio_tungstenite=off,tungstenite=off");
 
     tracing_subscriber::registry()
+        .with(filter)
         .with(stdout_layer)
         .with(file_layer)
         .init();
         
-    tracing::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
+    tracing::info!("[SYSTEM] 🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
 
     let raw_token = std::env::var("BOT_TOKEN").or_else(|_| std::env::var("TELOXIDE_TOKEN")).expect("❌ FATAL ERROR: BOT_TOKEN is missing");
     let secret_token = SecretString::from(raw_token);
-    tracing::info!("🔐 Bot Token securely loaded into Zeroized Memory.");
+    tracing::info!("[SYSTEM] 🔐 Bot Token securely loaded into Zeroized Memory.");
 
     let shutdown_token = CancellationToken::new();
     let db_pool = SqlitePoolOptions::new().max_connections(5).connect("sqlite:kaspa_bot.db?mode=rwc").await.expect("❌ DB Error");
@@ -68,11 +71,11 @@ async fn main() {
 
     let bot_client = Bot::new(secret_token.expose_secret());
     let state_clone = state.clone();
-    // bot_clone removed
+    let bot_clone = bot_client.clone();
     
-    // api_clone removed
-    let bot_for_kaspa = bot_client.clone();
-    tokio::spawn(async move { kaspa::start_kaspa_listener(state_clone, bot_for_kaspa).await;
+    let api_clone = api.clone();
+    tokio::spawn(async move {
+        kaspa::start_kaspa_engine(state_clone, bot_clone, api_clone).await;
     });
 
     bot::start_telegram_bot(bot_client, state, api).await;
