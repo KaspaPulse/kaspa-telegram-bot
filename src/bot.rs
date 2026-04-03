@@ -13,10 +13,20 @@ pub enum Command {
     Sys, Pause, Resume, Restart, Logs, Broadcast(String)
 }
 
+// Interceptor function to mirror the old JS "bot.sendMessage" hook
+async fn send_msg(bot: &Bot, chat_id: i64, text: &str) -> ResponseResult<Message> {
+    let safe_log = text.replace('\n', " \\ ");
+    tracing::info!("[BOT OUT] Chat ID: {} | Msg: {}", chat_id, safe_log);
+    bot.send_message(ChatId(chat_id), text)
+        .parse_mode(ParseMode::Markdown)
+        .disable_web_page_preview(true)
+        .await
+}
+
 pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiManager>) {
     if let Ok(contents) = tokio::fs::read_to_string(".restart_flag").await {
         if let Ok(chat_id) = contents.trim().parse::<i64>() {
-            let _ = bot.send_message(ChatId(chat_id), "✅ *Restart Successful!*\nSystem is back online and running at full capacity.").parse_mode(ParseMode::MarkdownV2).await;
+            let _ = send_msg(&bot, chat_id, "✅ *Restart Successful!*\nSystem is back online and running at full capacity.").await;
             let _ = tokio::fs::remove_file(".restart_flag").await;
         }
     }
@@ -69,10 +79,12 @@ fn check_rate_limit(state: &Arc<AppState>, chat_id: i64) -> bool {
 }
 
 async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> ResponseResult<()> {
-    if !check_rate_limit(&state, msg.chat.id.0) { return Ok(()); }
+    let cid = msg.chat.id.0;
+    if !check_rate_limit(&state, cid) { return Ok(()); }
+    
     if let Some(text) = msg.text() {
+        tracing::info!("[CMD IN] Chat ID: {} | Executing: PlainText ({})", cid, text);
         if let Some(valid) = clean_and_validate_wallet(text) {
-            let cid = msg.chat.id.0;
             let mut is_new = false;
             let mut should_save = false;
             
@@ -93,21 +105,21 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
 
             if should_save {
                 state.sync_wallet_to_db(&valid).await;
-                bot.send_message(msg.chat.id, "✅ *Wallet Linked Successfully*").parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, "✅ *Wallet Linked Successfully*").await?;
             } else {
-                bot.send_message(msg.chat.id, "⚠️ Wallet is already tracked or limit reached.").await?;
+                send_msg(&bot, cid, "⚠️ Wallet is already tracked or limit reached.").await?;
             }
         }
     }
     Ok(())
 }
 
-#[tracing::instrument(skip(bot, state, api))]
 async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, api: Arc<ApiManager>) -> ResponseResult<()> {
     let cid = msg.chat.id.0;
+    tracing::info!("[CMD IN] Chat ID: {} | Executing: {:?}", cid, cmd);
     
     if !check_rate_limit(&state, cid) {
-        let _ = bot.send_message(msg.chat.id, "⏳ *Please wait a few seconds before executing again.*").parse_mode(ParseMode::Markdown).await;
+        send_msg(&bot, cid, "⏳ *Please wait a few seconds before executing again.*").await?;
         return Ok(());
     }
 
@@ -126,7 +138,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
                 }
             }
             txt.push_str(&format!("━━━━━━━━━━\n💰 *Total:* `{:.2} KAS`", total));
-            bot.send_message(msg.chat.id, txt).parse_mode(ParseMode::Markdown).await?;
+            send_msg(&bot, cid, &txt).await?;
         },
         Command::List => {
             let mut txt = String::from("📋 *Tracked Wallets*\n━━━━━━━━━━━━━━━━━━\n");
@@ -138,45 +150,55 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
                 }
             }
             if count == 0 { txt.push_str("_No wallets tracked yet._"); }
-            bot.send_message(msg.chat.id, txt).parse_mode(ParseMode::Markdown).await?;
+            send_msg(&bot, cid, &txt).await?;
         },
         Command::Market => {
             let p = match api.get_price().await { Ok(v) => v["price"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
             let m = match api.get_market().await { Ok(v) => v["marketcap"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
-            bot.send_message(msg.chat.id, format!("📊 *Market*\nPrice: `${:.4}`\nCap: `${:.0}`", p, m)).parse_mode(ParseMode::Markdown).await?;
+            send_msg(&bot, cid, &format!("📈 *Kaspa Market Overview*\n━━━━━━━━━━━━━━━━━━\n🏷️ *Price:* `${:.4}`\n💎 *Market Cap:* `${:.0}`", p, m)).await?;
         },
         Command::Price => {
             let price = match api.get_price().await { Ok(v) => v["price"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
-            bot.send_message(msg.chat.id, format!("💵 *Price:* `${:.4}`", price)).parse_mode(ParseMode::Markdown).await?;
+            send_msg(&bot, cid, &format!("💵 *Kaspa (KAS) Price*\n━━━━━━━━━━━━━━━━━━\n🏷️ *Current Price:* `${:.4} USD`", price)).await?;
         },
         Command::Network => {
             if let Ok(n) = api.get_network().await {
                 let hr = format_hashrate(n["hashrate"].as_f64().unwrap_or(0.0));
-                bot.send_message(msg.chat.id, format!("🌐 *Network Hashrate:* `{}`", hr)).parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, &format!("🌐 *Kaspa Network Stats*\n━━━━━━━━━━━━━━━━━━\n⛏️ *Hashrate:* `{}`", hr)).await?;
             }
         },
         Command::Supply => {
             if let Ok(s) = api.get_supply().await {
-                let circ_raw = s["circulatingSupply"].as_str().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
-                bot.send_message(msg.chat.id, format!("🪙 *Circulating Supply:* `{:.0} KAS*`", circ_raw / 100_000_000.0)).parse_mode(ParseMode::Markdown).await?;
+                let circ = s["circulatingSupply"].as_u64().unwrap_or(0) as f64 / 100_000_000.0;
+                let max = s["maxSupply"].as_u64().unwrap_or(0) as f64 / 100_000_000.0;
+                let mined = if max > 0.0 { (circ / max) * 100.0 } else { 0.0 };
+                send_msg(&bot, cid, &format!("🪙 *Kaspa Supply Info*\n━━━━━━━━━━━━━━━━━━\n🔄 *Circulating:* `{:.0} KAS`\n🛑 *Max Supply:* `{:.0} KAS`\n⛏️ *Mined:* `{:.2}%`", circ, max, mined)).await?;
             }
         },
         Command::Fees => {
             if let Ok(f) = api.get_fees().await {
                 let fee = f["priorityBucket"]["feerate"].as_f64().unwrap_or(0.0);
-                bot.send_message(msg.chat.id, format!("⛽ *Priority Fee:* `{:.2} sompi/byte`", fee)).parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, &format!("⛽ *Network Mempool Fees*\n━━━━━━━━━━━━━━━━━━\n🔴 *Priority:* `{:.2} sompi/gram`", fee)).await?;
             }
         },
-        Command::Dag => { bot.send_message(msg.chat.id, "📦 *DAG info is currently synced via WS Node.*").parse_mode(ParseMode::Markdown).await?; },
-        Command::Add(_) => { bot.send_message(msg.chat.id, "Please just paste the wallet address directly to track it.").await?; },
+        Command::Dag => {
+            if let Ok(d) = api.get_dag_info().await {
+                let blocks = d["blockCount"].as_u64().unwrap_or(0);
+                let headers = d["headerCount"].as_u64().unwrap_or(0);
+                let diff = d["difficulty"].as_f64().unwrap_or(0.0);
+                let net = d["networkName"].as_str().unwrap_or("Mainnet");
+                send_msg(&bot, cid, &format!("📦 *Node BlockDAG Details*\n━━━━━━━━━━━━━━━━━━\n🧩 *Network:* `{}`\n🧱 *Blocks:* `{}`\n📑 *Headers:* `{}`\n⚙️ *Difficulty:* `{:.2}`", net, blocks, headers, diff)).await?;
+            }
+        },
+        Command::Add(_) => { send_msg(&bot, cid, "Please just paste the wallet address directly to track it.").await?; },
         Command::Remove(wallet) => {
             let valid = clean_and_validate_wallet(&wallet).unwrap_or(wallet.clone());
             if let Some(mut entry) = state.monitored_wallets.get_mut(&valid) {
                 entry.chat_ids.retain(|&id| id != cid);
                 state.remove_wallet_from_db(&valid, cid).await;
-                bot.send_message(msg.chat.id, format!("🗑️ *Removed from Tracking:*\n`{}`", valid)).parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, &format!("🗑️ *Removed from Tracking:*\n`{}`", valid)).await?;
             } else {
-                bot.send_message(msg.chat.id, "⚠️ Wallet not found in your tracking list.").await?;
+                send_msg(&bot, cid, "⚠️ Wallet not found in your tracking list.").await?;
             }
         },
         
@@ -196,38 +218,37 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
                     System::long_os_version().unwrap_or_else(|| "Unknown".to_string()),
                     used_ram, total_ram
                 );
-                bot.send_message(msg.chat.id, text).parse_mode(ParseMode::Markdown).await?;
-            } else { bot.send_message(msg.chat.id, "⛔ *Access Denied*").parse_mode(ParseMode::Markdown).await?; }
+                send_msg(&bot, cid, &text).await?;
+            } else { send_msg(&bot, cid, "⛔ *Access Denied*").await?; }
         },
         Command::Pause => {
             if Some(cid) == state.admin_id {
                 state.is_monitoring.store(false, std::sync::atomic::Ordering::Relaxed);
-                bot.send_message(msg.chat.id, "⏸️ *Engine Paused*").parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, "⏸️ *Engine Paused*").await?;
             }
         },
         Command::Resume => {
             if Some(cid) == state.admin_id {
                 state.is_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
-                bot.send_message(msg.chat.id, "▶️ *Engine Resumed*").parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, "▶️ *Engine Resumed*").await?;
             }
         },
         Command::Restart => {
             if Some(cid) == state.admin_id {
                 let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
-                let _ = bot.send_message(msg.chat.id, "🔄 *System Reboot Initiated*\n_Saving databases securely before exit..._").parse_mode(ParseMode::Markdown).await;
+                let _ = send_msg(&bot, cid, "🔄 *System Reboot Initiated*\n_Saving databases securely before exit..._").await;
                 state.shutdown_token.cancel(); 
                 tokio::spawn(async move { tokio::time::sleep(std::time::Duration::from_secs(3)).await; std::process::exit(0); });
             }
         },
         Command::Logs => {
             if Some(cid) == state.admin_id {
-                if let Ok(output) = std::process::Command::new("journalctl").args(&["-u", "kaspa-rust-bot.service", "-n", "25", "--no-pager"]).output() {
-                    let logs = String::from_utf8_lossy(&output.stdout);
-                    let safe_logs = if logs.len() > 3900 { &logs[logs.len()-3900..] } else { &logs };
-                    bot.send_message(msg.chat.id, format!("📜 *Recent Logs:*\n```text\n{}\n```", safe_logs)).parse_mode(ParseMode::Markdown).await?;
-                } else {
-                    bot.send_message(msg.chat.id, "❌ Failed to retrieve logs. Are you using systemd?").parse_mode(ParseMode::Markdown).await?;
-                }
+                // Cross-Platform Logs Reading (replaces Linux-only journalctl)
+                let logs_content = tokio::fs::read_to_string("kaspa_bot.log").await.unwrap_or_else(|_| "No logs found on disk.".to_string());
+                let lines: Vec<&str> = logs_content.lines().collect();
+                let recent_logs = lines.into_iter().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+                let safe_logs = if recent_logs.len() > 3900 { &recent_logs[recent_logs.len()-3900..] } else { &recent_logs };
+                send_msg(&bot, cid, &format!("📜 *Recent System Logs:*\n```text\n{}\n```", safe_logs)).await?;
             }
         },
         Command::Broadcast(text) => {
@@ -235,9 +256,9 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
                 let users = state.get_all_users();
                 let mut count = 0;
                 for user in &users {
-                    if bot.send_message(ChatId(*user), format!("📢 *Admin Announcement:*\n\n{}", text)).parse_mode(ParseMode::Markdown).await.is_ok() { count += 1; }
+                    if send_msg(&bot, *user, &format!("📢 *Admin Announcement:*\n\n{}", text)).await.is_ok() { count += 1; }
                 }
-                bot.send_message(msg.chat.id, format!("✅ Broadcast sent to {} users.", count)).parse_mode(ParseMode::Markdown).await?;
+                send_msg(&bot, cid, &format!("✅ Broadcast sent to {} users.", count)).await?;
             }
         },
     }
@@ -245,8 +266,9 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
 }
 
 async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<ApiManager>) -> ResponseResult<()> {
-    let _ = bot.answer_callback_query(q.id).await;
+    let _ = bot.answer_callback_query(q.id.clone()).await;
     if let (Some(msg), Some(data)) = (q.message, q.data) {
+        tracing::info!("[RAW CALLBACK] Received callback query from ID: {} | Data: {}", q.from.id, data);
         let cmd = match data.as_str() {
             "cmd_balance" => Command::Balance,
             "cmd_list" => Command::List,
@@ -255,6 +277,7 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
             "cmd_network" => Command::Network,
             "cmd_supply" => Command::Supply,
             "cmd_fees" => Command::Fees,
+            "cmd_dag" => Command::Dag,
             _ => Command::Start,
         };
         let _ = handle_cmd(bot, msg, cmd, state, api).await;

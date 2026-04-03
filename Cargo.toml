@@ -32,3 +32,4 @@ aes-gcm = "0.10.3"
 sha2 = "0.11.0"
 rand = "0.10.0"
 sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls"] }
+tracing-appender = "0.2.4"

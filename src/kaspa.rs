@@ -195,7 +195,9 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     for chat_id in subscribers {
         tokio::time::sleep(Duration::from_millis(40)).await;
         // Using ParseMode::Markdown to ensure broad compatibility without needing to manually escape characters
-        let _ = bot.send_message(ChatId(chat_id), build_msg("...", "...", "...")).parse_mode(ParseMode::Markdown).await;
+                let final_text = build_msg("...", "...", "...");
+        tracing::info!("[BOT OUT] Chat ID: {} | Msg: {}", chat_id, final_text.replace('\n', " \\ "));
+        let _ = bot.send_message(ChatId(chat_id), final_text).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await;
     }
 }
 
@@ -203,3 +205,4 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<Sompi> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_u64()).map(Sompi) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
+
