@@ -1,23 +1,27 @@
-﻿use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+﻿use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, tungstenite::client::IntoClientRequest};
 use futures_util::{StreamExt, SinkExt};
 
 pub struct LocalNodeRpc;
 
 impl LocalNodeRpc {
-    // Core Engine: Opens a micro-connection to fetch unary RPC data from the Node
     pub async fn query(request_type: &str, params: serde_json::Value) -> Option<serde_json::Value> {
-        let ws_url = std::env::var("NODE_WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:16110".to_string());
+        let ws_url = std::env::var("NODE_WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
         
-        if let Ok((mut ws_stream, _)) = connect_async(&ws_url).await {
+        // [FIX] Added .clone() so the URL isn't consumed, leaving it available for the log below
+        let mut request = match ws_url.clone().into_client_request() {
+            Ok(req) => req,
+            Err(_) => return None,
+        };
+        request.headers_mut().insert("sec-websocket-protocol", "wrpc-json".parse().unwrap());
+
+        if let Ok((mut ws_stream, _)) = connect_async(request).await {
             let mut payload_map = serde_json::Map::new();
             payload_map.insert(request_type.to_string(), params);
             let payload = serde_json::Value::Object(payload_map);
 
-            // Dispatch RPC Request
             if ws_stream.send(Message::Text(payload.to_string())).await.is_ok() {
-                // Await Response with a strict 5-second timeout to prevent thread starvation
                 if let Ok(Some(Ok(Message::Text(msg)))) = tokio::time::timeout(std::time::Duration::from_secs(5), ws_stream.next()).await {
-                    let _ = ws_stream.close(None).await; // Graceful termination
+                    let _ = ws_stream.close(None).await;
                     
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&msg) {
                         let response_key = format!("{}Response", request_type.replace("Request", ""));

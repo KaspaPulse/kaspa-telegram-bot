@@ -1,4 +1,4 @@
-use dashmap::DashMap;
+﻿use dashmap::DashMap;
 use sqlx::{SqlitePool, Row};
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -13,16 +13,19 @@ pub struct WalletData {
     pub chat_ids: Vec<i64>,
 }
 
-pub struct ActiveTracker {
-    pub messages: Vec<MessageRef>,
-    pub daa_score: u64,
-}
-
+#[derive(Clone, Debug)]
 pub struct MessageRef {
     pub chat_id: i64,
     pub message_id: i32,
 }
 
+#[derive(Clone, Debug)]
+pub struct ActiveTracker {
+    pub messages: Vec<MessageRef>,
+    pub daa_score: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct PendingAlert {
     pub daa_score: u64,
 }
@@ -131,4 +134,3 @@ impl AppState {
         users.into_iter().collect()
     }
 }
-
