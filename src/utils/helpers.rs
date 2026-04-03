@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+﻿use once_cell::sync::Lazy;
 use regex::Regex;
 
 static KASPA_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^kaspa:[a-z0-9]{61,65}$").unwrap());
@@ -65,4 +65,36 @@ pub fn format_difficulty(val: f64) -> String {
         // Simple 2 decimal formatting for lower numbers
         format!("{:.2}", val)
     }
+}
+
+// [SECURITY] OOM DoS Prevention: Bounded Memory JSON Fetcher
+pub async fn fetch_json_safe(url: &str, max_bytes: usize) -> Option<serde_json::Value> {
+    if let Ok(mut resp) = reqwest::get(url).await {
+        let mut payload = Vec::new();
+        
+        // Read the incoming stream in tiny chunks to strictly monitor RAM usage
+        while let Ok(Some(chunk)) = resp.chunk().await {
+            payload.extend_from_slice(&chunk);
+            
+            // Instantly sever the connection if the payload exceeds our strict limit
+            if payload.len() > max_bytes {
+                log::warn!("[SECURITY] Bounded Fetcher: Payload from {} exceeded {} bytes. Dropped connection to protect RAM.", url, max_bytes);
+                return None;
+            }
+        }
+        
+        // Only parse JSON if the entire payload was securely within limits
+        if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&payload) {
+            return Some(json);
+        }
+    }
+    None
+}
+// [SECURITY] HTML Sanitizer for Telegram ParseMode
+pub fn sanitize_html(input: &str) -> String {
+    input.replace("&", "&amp;")
+         .replace("<", "&lt;")
+         .replace(">", "&gt;")
+         .replace("\"", "&quot;")
+         .replace("'", "&#x27;")
 }

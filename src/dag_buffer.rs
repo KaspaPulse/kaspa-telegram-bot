@@ -61,12 +61,15 @@ impl DagBuffer {
             log::info!("[DAG BUFFER] TX {} settled successfully. Processing alert.", tx_clone);
 
             // Utilizing the shared formatting helper functions
-            let short_tx = crate::utils::helpers::format_short_wallet(&tx_clone);
-            let short_wallet = crate::utils::helpers::format_short_wallet(&wallet);
+                        // [SECURITY] Neutralize any potential HTML injection payloads
+            let safe_wallet = crate::utils::helpers::sanitize_html(&wallet);
+            let safe_tx = crate::utils::helpers::sanitize_html(&tx_clone);
+            let short_wallet = crate::utils::helpers::format_short_wallet(&safe_wallet);
+            let short_tx = crate::utils::helpers::format_short_wallet(&safe_tx);
             
                         let initial_msg = format!(
                 "⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.2} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"https://kaspa.stream/transactions/{}\">{}</a>\n<b>Status:</b> ⏳ <code>Indexing Hashes...</code>",
-                wallet, short_wallet, amount_kas, tx_clone, short_tx
+                safe_wallet, short_wallet, amount_kas, safe_tx, short_tx
             );
 
             let mut sent_messages = Vec::new();
@@ -85,8 +88,8 @@ impl DagBuffer {
                 log::info!("[API POLL] Fetching hashes for TX {} (Attempt {})", tx_clone, attempt);
                 
                 let api_url = format!("https://api.kaspa.org/transactions/{}", tx_clone);
-                if let Ok(resp) = reqwest::get(&api_url).await {
-                    if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if true { // [ARCHITECTURE] Dummy scope to maintain strict brace alignment
+                    if let Some(json) = crate::utils::helpers::fetch_json_safe(&api_url, 1_048_576).await { // 1MB Hard Limit
                         if let Some(blocks) = json["block_hash"].as_array() {
                             if !blocks.is_empty() {
                                 let block_hash = blocks[0].as_str().unwrap_or("Unknown");
@@ -94,7 +97,7 @@ impl DagBuffer {
                                 
                                             let final_msg = format!(
                 "⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.2} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"https://kaspa.stream/transactions/{}\">{}</a>\n<b>TX Block:</b> <a href=\"https://kaspa.stream/blocks/{}\">{}</a>\n✅ <b>Confirmed in DAG</b>",
-                wallet, short_wallet, amount_kas, tx_clone, short_tx, block_hash, short_block
+                safe_wallet, short_wallet, amount_kas, safe_tx, short_tx, block_hash, short_block
             );
 
                                 for (cid, mid) in sent_messages {

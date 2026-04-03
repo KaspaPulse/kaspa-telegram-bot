@@ -9,6 +9,11 @@ use sled::Db;
 use crate::api::ApiManager;
 use crate::dag_buffer::DagBuffer;
 
+// --- Enterprise Security Imports ---
+use aes_gcm::{aead::{Aead, KeyInit, OsRng}, Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::AeadCore;
+use sha2::{Sha256, Digest};
+
 pub const MAX_ACCOUNTS_PER_WALLET: usize = 2;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -33,46 +38,82 @@ pub struct AppState {
     pub start_time: Instant,
     pub shutdown_token: CancellationToken,
     pub rate_limits: DashMap<ChatId, Instant>,
-    // --- Enterprise Embedded Database ---
     pub db: Db,
+}
+
+// --- Zero-Trust Encryption Engine ---
+fn derive_key() -> Key<Aes256Gcm> {
+    let secret = std::env::var("DB_ENCRYPTION_KEY")
+        .unwrap_or_else(|_| "KaspaEnterpriseFallbackSecret2026".to_string());
+    
+    // Hash the secret to strictly enforce the 32-byte key requirement for AES-256
+    let mut hasher = Sha256::new();
+    hasher.update(secret.as_bytes());
+    let result = hasher.finalize();
+    *Key::<Aes256Gcm>::from_slice(&result)
+}
+
+fn encrypt_payload(data: &[u8]) -> Vec<u8> {
+    let key = derive_key();
+    let cipher = Aes256Gcm::new(&key);
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 12 bytes
+    
+    let ciphertext = cipher.encrypt(&nonce, data).expect("CRITICAL: Encryption Engine Failure");
+    
+    let mut output = nonce.to_vec();
+    output.extend_from_slice(&ciphertext);
+    output
+}
+
+fn decrypt_payload(data: &[u8]) -> Vec<u8> {
+    if data.len() > 12 {
+        let key = derive_key();
+        let cipher = Aes256Gcm::new(&key);
+        let nonce = Nonce::from_slice(&data[0..12]);
+        
+        if let Ok(decrypted) = cipher.decrypt(nonce, &data[12..]) {
+            return decrypted;
+        }
+    }
+    // Legacy Fallback: If decryption fails, assume data is from the pre-encryption plaintext era
+    data.to_vec()
 }
 
 impl AppState {
     pub fn new(shutdown_token: CancellationToken) -> Self {
         let monitored_wallets = DashMap::new();
+        let db = sled::open("kaspa_bot_db").expect("CRITICAL: Failed to initialize secure database");
 
-        // [DATABASE INIT] Open or create the embedded high-speed database
-        let db = sled::open("kaspa_bot_db").expect("CRITICAL: Failed to initialize embedded database");
-
-        // [MIGRATION SYSTEM] Smoothly transition from legacy JSON to Sled DB
+        // Migrate and encrypt legacy JSON if it exists
         if std::path::Path::new("wallets.json").exists() {
             if let Ok(file_content) = std::fs::read_to_string("wallets.json") {
                 if let Ok(parsed_data) = serde_json::from_str::<std::collections::HashMap<String, WalletData>>(&file_content) {
                     for (wallet, data) in parsed_data {
                         if let Ok(serialized) = serde_json::to_vec(&data) {
-                            let _ = db.insert(wallet.as_bytes(), serialized);
+                            let encrypted = encrypt_payload(&serialized);
+                            let _ = db.insert(wallet.as_bytes(), encrypted);
                         }
                     }
                     let _ = db.flush();
                     let _ = std::fs::rename("wallets.json", "wallets.json.bak");
-                    log::info!("Migration Engine: Successfully migrated legacy wallets.json to embedded DB.");
+                    log::info!("Security Engine: Legacy JSON migrated and encrypted successfully.");
                 }
             }
         }
 
-        // [MEMORY HYDRATION] Load data from DB into ultra-fast RAM (DashMap)
         let mut loaded_count = 0;
         for item in db.iter() {
             if let Ok((k, v)) = item {
                 if let Ok(wallet) = String::from_utf8(k.to_vec()) {
-                    if let Ok(data) = serde_json::from_slice::<WalletData>(&v) {
+                    let decrypted = decrypt_payload(&v);
+                    if let Ok(data) = serde_json::from_slice::<WalletData>(&decrypted) {
                         monitored_wallets.insert(wallet, data);
                         loaded_count += 1;
                     }
                 }
             }
         }
-        log::info!("Persistence Engine: Loaded {} wallets from embedded DB.", loaded_count);
+        log::info!("Zero-Trust Security Engine: Decrypted and loaded {} wallets into RAM.", loaded_count);
 
         let admin_id = std::env::var("ADMIN_ID")
             .ok()
@@ -104,19 +145,32 @@ impl AppState {
         users.into_iter().collect()
     }
 
-    // [O(1) I/O FIX] Writes only deltas to WAL, eliminating massive JSON rewrite bottlenecks
+        // [ARCHITECTURE FIX] Prevent Tokio Thread Starvation by offloading CPU/IO to a dedicated blocking thread pool
     pub async fn save_wallets(&self) {
-        for entry in self.monitored_wallets.iter() {
-            if let Ok(serialized) = serde_json::to_vec(entry.value()) {
-                let _ = self.db.insert(entry.key().as_bytes(), serialized);
-            }
-        }
+        let db_clone = self.db.clone();
         
-        // Asynchronously flush the Write-Ahead Log to disk without blocking the runtime
+        // Step 1: Snapshot the DashMap to release RAM locks instantly
+        let mut snapshot = Vec::new();
+        for entry in self.monitored_wallets.iter() {
+            snapshot.push((entry.key().clone(), entry.value().clone()));
+        }
+
+        // Step 2: Offload heavy encryption (CPU-Bound) and database inserts (Blocking I/O)
+        let _ = tokio::task::spawn_blocking(move || {
+            for (wallet, data) in snapshot {
+                if let Ok(serialized) = serde_json::to_vec(&data) {
+                    // Utilizing the encryption engine safely in a background thread
+                    let encrypted = encrypt_payload(&serialized);
+                    let _ = db_clone.insert(wallet.as_bytes(), encrypted);
+                }
+            }
+        }).await;
+        
+        // Step 3: Flush asynchronously to keep the network event loop ultra-fast
         if let Err(e) = self.db.flush_async().await {
-            log::error!("[PERSISTENCE] DB Flush Error: {}", e);
+            log::error!("[SECURITY] Database Flush Error: {}", e);
         } else {
-            log::debug!("[PERSISTENCE] Database synchronized successfully.");
+            log::debug!("[SECURITY] Database synchronized successfully without blocking async threads.");
         }
     }
 
