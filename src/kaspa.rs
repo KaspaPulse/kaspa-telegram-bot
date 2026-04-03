@@ -27,10 +27,7 @@ pub struct UtxoEvent {
 pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
     let ws_url = std::env::var("WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
     
-    // MPSC Channel to absorb Event Floods (Buffer: 5000 events)
     let (tx_event, mut rx_event) = mpsc::channel::<UtxoEvent>(5000);
-    
-    // Semaphore to strictly limit concurrent API requests (Max 10)
     let api_semaphore = Arc::new(Semaphore::new(10));
 
     let worker_state = state.clone();
@@ -38,7 +35,6 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
     let worker_api = api.clone();
     let worker_shutdown = state.shutdown_token.clone();
 
-    // Background Worker Pool
     tokio::spawn(async move {
         loop {
             tokio::select! {
@@ -67,7 +63,6 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
         }
     });
 
-    // WebSocket Reconnection Loop
     loop {
         if state.shutdown_token.is_cancelled() { return; }
         if !state.is_monitoring.load(std::sync::atomic::Ordering::Relaxed) { 
@@ -88,19 +83,26 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
             Ok((mut ws_stream, _)) => {
                 tracing::info!("✅ [NODE] Connected! Handshaking...");
 
-                let addresses: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
-                if !addresses.is_empty() {
-                    let sub_req = json!({
-                        "jsonrpc": "2.0",
-                        "id": 2,
-                        "method": "notifyUtxosChanged",
-                        "params": { "addresses": addresses }
-                    });
-                    let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
-                }
+                let mut last_wallet_count = state.monitored_wallets.len();
+                let mut sub_interval = tokio::time::interval(Duration::from_secs(10));
 
                 loop {
                     tokio::select! {
+                        _ = sub_interval.tick() => {
+                            let current_count = state.monitored_wallets.len();
+                            if current_count != last_wallet_count {
+                                last_wallet_count = current_count;
+                                let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
+                                let sub_req = json!({
+                                    "jsonrpc": "2.0",
+                                    "id": 2,
+                                    "method": "notifyUtxosChanged",
+                                    "params": { "addresses": addrs }
+                                });
+                                let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
+                                tracing::info!("🔄 [NODE] Dynamic Subscription Updated! Now tracking {} wallets.", current_count);
+                            }
+                        }
                         _ = state.shutdown_token.cancelled() => {
                             tracing::warn!("🛑 [NODE] Shutdown signal received. Safely closing WebSocket...");
                             let _ = ws_stream.close(None).await;
@@ -167,11 +169,12 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
 #[tracing::instrument(skip(state, bot, api))]
 async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
     let exact_reward: Kaspa = event.amount.into();
-    let mut live_bal = Kaspa(0.0);
-
-    if let Ok(api_bal) = api.get_balance(&event.address).await {
-        live_bal = Kaspa(api_bal);
-    }
+    
+    // Fix unused mut/assignment by scoping the initialization cleanly
+    let mut live_bal = match api.get_balance(&event.address).await {
+        Ok(bal) if bal > 0.0 => Kaspa(bal),
+        _ => Kaspa(0.0),
+    };
 
     if let Some(mut wallet) = state.monitored_wallets.get_mut(&event.address) {
         if live_bal.0 == 0.0 { 
@@ -186,18 +189,19 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     let short_wallet = format_short_wallet(&event.address);
 
     let build_msg = |_b: &str, a: &str, m: &str| -> String {
-        format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{} KAS`\n*Live Balance:* `{} KAS`\n━━━━━━━━━━━━━━━━━━\n*Mined Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", 
-        dt_str, short_wallet, format!("https://kaspa.stream/addresses/{}", event.address), exact_reward, live_bal, m, a, event.daa_score)
+        format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{} KAS</code>\n<b>Live Balance:</b> <code>{} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>Mined Block:</b> {}\n<b>Accepting Block:</b> {}\n<b>DAA Score:</b> <code>{}</code>", 
+        dt_str, event.address, short_wallet, exact_reward, live_bal, m, a, event.daa_score)
     };
 
     let subscribers = match state.monitored_wallets.get(&event.address) { Some(w) => w.chat_ids.clone(), None => return };
 
     for chat_id in subscribers {
         tokio::time::sleep(Duration::from_millis(40)).await;
-        // Using ParseMode::Markdown to ensure broad compatibility without needing to manually escape characters
-                let final_text = build_msg("...", "...", "...");
+        let final_text = build_msg("...", "...", "...");
         tracing::info!("[BOT OUT] Chat ID: {} | Msg: {}", chat_id, final_text.replace('\n', " \\ "));
-        let _ = bot.send_message(ChatId(chat_id), final_text).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await;
+        if let Err(e) = bot.send_message(ChatId(chat_id), final_text).parse_mode(ParseMode::Html).disable_web_page_preview(true).await {
+            tracing::error!("❌ [BOT OUT ERROR] Failed to send Telegram message: {}", e);
+        }
     }
 }
 
@@ -205,4 +209,3 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<Sompi> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_u64()).map(Sompi) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
-

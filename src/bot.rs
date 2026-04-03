@@ -13,7 +13,6 @@ pub enum Command {
     Sys, Pause, Resume, Restart, Logs, Broadcast(String)
 }
 
-// Interceptor function to mirror the old JS "bot.sendMessage" hook
 async fn send_msg(bot: &Bot, chat_id: i64, text: &str) -> ResponseResult<Message> {
     let safe_log = text.replace('\n', " \\ ");
     tracing::info!("[BOT OUT] Chat ID: {} | Msg: {}", chat_id, safe_log);
@@ -114,6 +113,7 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
     Ok(())
 }
 
+#[tracing::instrument(skip(bot, state, api))]
 async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, api: Arc<ApiManager>) -> ResponseResult<()> {
     let cid = msg.chat.id.0;
     tracing::info!("[CMD IN] Chat ID: {} | Executing: {:?}", cid, cmd);
@@ -243,12 +243,11 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         },
         Command::Logs => {
             if Some(cid) == state.admin_id {
-                // Cross-Platform Logs Reading (replaces Linux-only journalctl)
                 let logs_content = tokio::fs::read_to_string("kaspa_bot.log").await.unwrap_or_else(|_| "No logs found on disk.".to_string());
                 let lines: Vec<&str> = logs_content.lines().collect();
                 let recent_logs = lines.into_iter().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
                 let safe_logs = if recent_logs.len() > 3900 { &recent_logs[recent_logs.len()-3900..] } else { &recent_logs };
-                send_msg(&bot, cid, &format!("📜 *Recent System Logs:*\n```text\n{}\n```", safe_logs)).await?;
+                let _ = bot.send_message(msg.chat.id, format!("📜 *Recent System Logs:*\n```text\n{}\n```", safe_logs)).parse_mode(ParseMode::Markdown).await;
             }
         },
         Command::Broadcast(text) => {

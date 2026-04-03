@@ -19,7 +19,6 @@ use crate::api::ApiManager;
 async fn main() {
     dotenv().ok();
     
-    // [ENTERPRISE FIX] Dual Logging: Output to Console AND a kaspa_bot.log file
     let file_appender = tracing_appender::rolling::never(".", "kaspa_bot.log");
     let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
     
