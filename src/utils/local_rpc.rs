@@ -1,11 +1,11 @@
-﻿use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, tungstenite::client::IntoClientRequest};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, tungstenite::client::IntoClientRequest};
 use futures_util::{StreamExt, SinkExt};
 
 pub struct LocalNodeRpc;
 
 impl LocalNodeRpc {
     pub async fn query(request_type: &str, params: serde_json::Value) -> Option<serde_json::Value> {
-        let ws_url = std::env::var("NODE_WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
+        let ws_url = std::env::var("WS_URL").unwrap_or_else(|_| "ws://127.0.0.1:18110".to_string());
         
         // [FIX] Added .clone() so the URL isn't consumed, leaving it available for the log below
         let mut request = match ws_url.clone().into_client_request() {
