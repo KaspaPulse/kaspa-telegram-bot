@@ -1,4 +1,4 @@
-﻿#![allow(deprecated, unused_imports)]
+#![allow(deprecated, unused_imports)]
 use teloxide::{prelude::*, utils::command::BotCommands, types::{InlineKeyboardMarkup, ParseMode, BotCommand, BotCommandScope}};
 use std::sync::Arc;
 use sysinfo::System;
@@ -89,12 +89,11 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
             
             { 
                 let mut entry = state.monitored_wallets.entry(valid.clone()).or_insert_with(|| {
-                    is_new = true;
-                    vec![cid]
+                    is_new = true; WalletData { last_balance: 0.0, chat_ids: vec![cid] }
                 });
-                if !is_new && !entry.contains(&cid) {
-                    if entry.len() < MAX_ACCOUNTS_PER_WALLET {
-                        entry.push(cid);
+                if !is_new && !entry.chat_ids.contains(&cid) {
+                    if entry.chat_ids.len() < MAX_ACCOUNTS_PER_WALLET {
+                        entry.chat_ids.push(cid);
                         should_save = true;
                     }
                 } else if is_new {
@@ -131,7 +130,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             let mut total = 0.0;
             let mut txt = String::from("🏦 *Balances*\n");
             for kv in state.monitored_wallets.iter() {
-                if kv.value().contains(&cid) {
+                if kv.value().chat_ids.contains(&cid) {
                     let bal = api.get_balance(kv.key()).await.unwrap_or(0.0);
                     total += bal;
                     txt.push_str(&format!("• `{}`: *{:.2} KAS*\n", format_short_wallet(kv.key()), bal));
@@ -144,7 +143,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             let mut txt = String::from("📋 *Tracked Wallets*\n━━━━━━━━━━━━━━━━━━\n");
             let mut count = 0;
             for kv in state.monitored_wallets.iter() {
-                if kv.value().contains(&cid) { 
+                if kv.value().chat_ids.contains(&cid) { 
                     txt.push_str(&format!("• `{}`\n", kv.key()));
                     count += 1;
                 }
@@ -194,7 +193,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         Command::Remove(wallet) => {
             let valid = clean_and_validate_wallet(&wallet).unwrap_or(wallet.clone());
             if let Some(mut entry) = state.monitored_wallets.get_mut(&valid) {
-                entry.retain(|&id| id != cid);
+                entry.chat_ids.retain(|&id| id != cid);
                 state.remove_wallet_from_db(&valid, cid).await;
                 send_msg(&bot, cid, &format!("🗑️ *Removed from Tracking:*\n`{}`", valid)).await?;
             } else {
@@ -283,4 +282,5 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
 

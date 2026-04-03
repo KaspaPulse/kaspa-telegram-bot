@@ -1,4 +1,4 @@
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 use sqlx::{SqlitePool, Row};
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -131,3 +131,4 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+
