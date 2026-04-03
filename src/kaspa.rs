@@ -4,8 +4,10 @@ use std::sync::Arc;
 use crate::state::AppState;
 use tokio::time::{sleep, Duration};
 
-pub async fn start_kaspa_listener(state: Arc<AppState>) {
+pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
     loop {
+        sleep(Duration::from_secs(2)).await;
+
         if !state.is_monitoring.load(std::sync::atomic::Ordering::SeqCst) {
             sleep(Duration::from_secs(5)).await;
             continue;
@@ -42,8 +44,12 @@ pub async fn start_kaspa_listener(state: Arc<AppState>) {
                                             let state_clone = state.clone();
                                             let addr_clone = address.to_string();
                                             let amt_clone = amount.to_string();
-                                                                                        tokio::spawn(async move {
-                                                let _ = crate::dag_buffer::DagBuffer::handle_new_utxo(addr_clone, amt_clone, state_clone).await;
+                                            
+                                            // Clone the bot BEFORE moving it into the spawn block
+                                            let bot_clone = bot.clone(); 
+                                            
+                                            tokio::spawn(async move {
+                                                crate::dag_buffer::DagBuffer::handle_new_utxo(addr_clone, amt_clone, state_clone, bot_clone).await;
                                             });
                                         }
                                     }

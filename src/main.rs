@@ -71,8 +71,8 @@ async fn main() {
     // bot_clone removed
     
     // api_clone removed
-    tokio::spawn(async move {
-        kaspa::start_kaspa_listener(state_clone).await;
+    let bot_for_kaspa = bot_client.clone();
+    tokio::spawn(async move { kaspa::start_kaspa_listener(state_clone, bot_for_kaspa).await;
     });
 
     bot::start_telegram_bot(bot_client, state, api).await;
