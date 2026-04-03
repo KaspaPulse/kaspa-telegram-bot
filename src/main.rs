@@ -1,3 +1,4 @@
+﻿pub mod dag_buffer;
 use std::sync::Arc;
 use teloxide::prelude::*;
 use dotenvy::dotenv;
@@ -67,11 +68,11 @@ async fn main() {
 
     let bot_client = Bot::new(secret_token.expose_secret());
     let state_clone = state.clone();
-    let bot_clone = bot_client.clone();
+    // bot_clone removed
     
-    let api_clone = api.clone();
+    // api_clone removed
     tokio::spawn(async move {
-        kaspa::start_kaspa_engine(state_clone, bot_clone, api_clone).await;
+        kaspa::start_kaspa_listener(state_clone).await;
     });
 
     bot::start_telegram_bot(bot_client, state, api).await;

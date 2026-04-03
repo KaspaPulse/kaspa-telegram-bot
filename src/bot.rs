@@ -1,4 +1,4 @@
-#![allow(deprecated, unused_imports)]
+﻿#![allow(deprecated, unused_imports)]
 use teloxide::{prelude::*, utils::command::BotCommands, types::{InlineKeyboardMarkup, ParseMode, BotCommand, BotCommandScope}};
 use std::sync::Arc;
 use sysinfo::System;
@@ -53,7 +53,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
         admin_cmds.push(BotCommand::new("restart", "👑 Admin: Reboot Process"));
         admin_cmds.push(BotCommand::new("logs", "👑 Admin: View Last 25 Logs"));
         admin_cmds.push(BotCommand::new("broadcast", "👑 Admin: Send msg to all"));
-        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: teloxide::types::Recipient::Id(ChatId(admin)) }).await;
+        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: teloxide::types::Recipient::Id(teloxide::prelude::ChatId(admin)) }).await;
     }
 
     let handler = dptree::entry()
@@ -66,7 +66,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
 }
 
 fn check_rate_limit(state: &Arc<AppState>, chat_id: i64) -> bool {
-    if Some(chat_id) == state.admin_id { return true; }
+    if state.admin_id == Some(chat_id) { return true; }
     let now = std::time::Instant::now();
     if let Some(mut last_time) = state.rate_limits.get_mut(&chat_id) {
         if now.duration_since(*last_time).as_secs() < 3 { return false; }
@@ -90,11 +90,11 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
             { 
                 let mut entry = state.monitored_wallets.entry(valid.clone()).or_insert_with(|| {
                     is_new = true;
-                    WalletData { last_balance: 0.0, chat_ids: vec![cid] }
+                    vec![cid]
                 });
-                if !is_new && !entry.chat_ids.contains(&cid) {
-                    if entry.chat_ids.len() < MAX_ACCOUNTS_PER_WALLET {
-                        entry.chat_ids.push(cid);
+                if !is_new && !entry.contains(&cid) {
+                    if entry.len() < MAX_ACCOUNTS_PER_WALLET {
+                        entry.push(cid);
                         should_save = true;
                     }
                 } else if is_new {
@@ -131,7 +131,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             let mut total = 0.0;
             let mut txt = String::from("🏦 *Balances*\n");
             for kv in state.monitored_wallets.iter() {
-                if kv.value().chat_ids.contains(&cid) {
+                if kv.value().contains(&cid) {
                     let bal = api.get_balance(kv.key()).await.unwrap_or(0.0);
                     total += bal;
                     txt.push_str(&format!("• `{}`: *{:.2} KAS*\n", format_short_wallet(kv.key()), bal));
@@ -144,7 +144,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             let mut txt = String::from("📋 *Tracked Wallets*\n━━━━━━━━━━━━━━━━━━\n");
             let mut count = 0;
             for kv in state.monitored_wallets.iter() {
-                if kv.value().chat_ids.contains(&cid) { 
+                if kv.value().contains(&cid) { 
                     txt.push_str(&format!("• `{}`\n", kv.key()));
                     count += 1;
                 }
@@ -194,7 +194,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         Command::Remove(wallet) => {
             let valid = clean_and_validate_wallet(&wallet).unwrap_or(wallet.clone());
             if let Some(mut entry) = state.monitored_wallets.get_mut(&valid) {
-                entry.chat_ids.retain(|&id| id != cid);
+                entry.retain(|&id| id != cid);
                 state.remove_wallet_from_db(&valid, cid).await;
                 send_msg(&bot, cid, &format!("🗑️ *Removed from Tracking:*\n`{}`", valid)).await?;
             } else {
@@ -204,7 +204,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         
         // --- ADMIN COMMANDS ---
         Command::Sys => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 let mut sys = System::new_all();
                 sys.refresh_all();
                 let uptime = state.start_time.elapsed().as_secs();
@@ -222,19 +222,19 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             } else { send_msg(&bot, cid, "⛔ *Access Denied*").await?; }
         },
         Command::Pause => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 state.is_monitoring.store(false, std::sync::atomic::Ordering::Relaxed);
                 send_msg(&bot, cid, "⏸️ *Engine Paused*").await?;
             }
         },
         Command::Resume => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 state.is_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
                 send_msg(&bot, cid, "▶️ *Engine Resumed*").await?;
             }
         },
         Command::Restart => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
                 let _ = send_msg(&bot, cid, "🔄 *System Reboot Initiated*\n_Saving databases securely before exit..._").await;
                 state.shutdown_token.cancel(); 
@@ -242,7 +242,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             }
         },
         Command::Logs => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 let logs_content = tokio::fs::read_to_string("kaspa_bot.log").await.unwrap_or_else(|_| "No logs found on disk.".to_string());
                 let lines: Vec<&str> = logs_content.lines().collect();
                 let recent_logs = lines.into_iter().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
@@ -251,7 +251,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             }
         },
         Command::Broadcast(text) => {
-            if Some(cid) == state.admin_id {
+            if state.admin_id == Some(cid) {
                 let users = state.get_all_users();
                 let mut count = 0;
                 for user in &users {
