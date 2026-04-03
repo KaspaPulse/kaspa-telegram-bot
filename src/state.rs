@@ -71,14 +71,14 @@ impl AppState {
         }
     }
     
-    pub fn save_wallets(&self) {
+    pub async fn save_wallets(&self) {
         let map: HashMap<String, WalletData> = self.monitored_wallets.iter().map(|kv| (kv.key().clone(), kv.value().clone())).collect();
         if let Ok(json) = serde_json::to_string_pretty(&map) {
-            let _ = std::fs::write("wallets.json", json);
+            let _ = tokio::fs::write("wallets.json", json).await;
         }
     }
     
-    pub fn save_trackers(&self) { }
+    pub async fn save_trackers(&self) { }
     
     pub fn get_all_users(&self) -> Vec<i64> {
         let mut users = HashSet::new();
@@ -88,4 +88,5 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+
 

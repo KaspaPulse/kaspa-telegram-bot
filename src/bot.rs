@@ -16,10 +16,10 @@ pub enum Command {
 
 pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiManager>) {
     // 1. Restart Flag Handling
-    if let Ok(contents) = std::fs::read_to_string(".restart_flag") {
+    if let Ok(contents) = tokio::fs::read_to_string(".restart_flag").await {
         if let Ok(chat_id) = contents.trim().parse::<i64>() {
             let _ = bot.send_message(ChatId(chat_id), "✅ *Restart Successful!*\nSystem is back online and running at full capacity.").parse_mode(ParseMode::Markdown).await;
-            let _ = std::fs::remove_file(".restart_flag");
+            let _ = tokio::fs::remove_file(".restart_flag").await;
         }
     }
 
@@ -85,17 +85,25 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
         if let Some(valid) = clean_and_validate_wallet(text) {
             let cid = msg.chat.id.0;
             let mut is_new = false;
-            let mut entry = state.monitored_wallets.entry(valid.clone()).or_insert_with(|| {
-                is_new = true;
-                WalletData { last_balance: 0.0, chat_ids: vec![cid] }
-            });
-            if !is_new && !entry.chat_ids.contains(&cid) {
-                if entry.chat_ids.len() < MAX_ACCOUNTS_PER_WALLET {
-                    entry.chat_ids.push(cid);
-                    state.save_wallets();
+            let mut should_save = false;
+            
+            { // Scope to safely drop DashMap locks BEFORE awaiting Async I/O
+                let mut entry = state.monitored_wallets.entry(valid.clone()).or_insert_with(|| {
+                    is_new = true;
+                    WalletData { last_balance: 0.0, chat_ids: vec![cid] }
+                });
+                if !is_new && !entry.chat_ids.contains(&cid) {
+                    if entry.chat_ids.len() < MAX_ACCOUNTS_PER_WALLET {
+                        entry.chat_ids.push(cid);
+                        should_save = true;
+                    }
+                } else if is_new {
+                    should_save = true;
                 }
-            } else if is_new {
-                state.save_wallets();
+            } // Write Lock is safely dropped here!
+
+            if should_save {
+                state.save_wallets().await;
             }
             bot.send_message(msg.chat.id, "✅ *Wallet Linked Successfully*").parse_mode(ParseMode::Markdown).await?;
         }
@@ -203,7 +211,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         },
         Command::Restart => {
             if Some(cid) == state.admin_id {
-                let _ = std::fs::write(".restart_flag", cid.to_string());
+                let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
                 let _ = bot.send_message(msg.chat.id, "🔄 *System Reboot Initiated*").parse_mode(ParseMode::Markdown).await;
                 std::process::exit(0);
             }
@@ -250,4 +258,5 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
 
