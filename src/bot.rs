@@ -1,4 +1,4 @@
-#![allow(deprecated, unused_imports)]
+﻿#![allow(deprecated, unused_imports)]
 use crate::api::ApiManager;
 use crate::state::{AppState, WalletData, MAX_ACCOUNTS_PER_WALLET};
 use crate::utils::helpers::{clean_and_validate_wallet, format_hashrate, format_short_wallet};
@@ -79,7 +79,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
         let _ = bot
             .set_my_commands(admin_cmds)
             .scope(BotCommandScope::Chat {
-                chat_id: teloxide::types::Recipient::Id(ChatId(admin)),
+                chat_id: teloxide::types::Recipient::Id(admin),
             })
             .await;
     }
@@ -103,17 +103,17 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
 }
 
 fn check_rate_limit(state: &Arc<AppState>, chat_id: i64) -> bool {
-    if Some(chat_id) == state.admin_id {
+    if Some(ChatId(chat_id)) == state.admin_id {
         return true;
     }
     let now = std::time::Instant::now();
-    if let Some(mut last_time) = state.rate_limits.get_mut(&chat_id) {
+    if let Some(mut last_time) = state.rate_limits.get_mut(&ChatId(chat_id)) {
         if now.duration_since(*last_time).as_secs() < 3 {
             return false;
         }
         *last_time = now;
     } else {
-        state.rate_limits.insert(chat_id, now);
+        state.rate_limits.insert(ChatId(chat_id), now);
     }
     true
 }
@@ -324,7 +324,7 @@ async fn handle_cmd(
 
         // --- ADMIN COMMANDS ---
         Command::Sys => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 let mut sys = System::new_all();
                 sys.refresh_all();
                 let uptime = state.start_time.elapsed().as_secs();
@@ -352,7 +352,7 @@ async fn handle_cmd(
             }
         }
         Command::Pause => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 state
                     .is_monitoring
                     .store(false, std::sync::atomic::Ordering::Relaxed);
@@ -362,7 +362,7 @@ async fn handle_cmd(
             }
         }
         Command::Resume => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 state
                     .is_monitoring
                     .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -372,7 +372,7 @@ async fn handle_cmd(
             }
         }
         Command::Restart => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
                 let _ = bot
                     .send_message(msg.chat.id, "🔄 *System Reboot Initiated*")
@@ -386,7 +386,7 @@ async fn handle_cmd(
             }
         }
         Command::Logs => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 if let Ok(output) = std::process::Command::new("journalctl")
                     .args(&["-u", "kaspa-rust-bot.service", "-n", "25", "--no-pager"])
                     .output()
@@ -414,7 +414,7 @@ async fn handle_cmd(
             }
         }
         Command::Broadcast(text) => {
-            if Some(cid) == state.admin_id {
+            if Some(ChatId(cid)) == state.admin_id {
                 let users = state.get_all_users();
                 let mut count = 0;
                 for user in &users {
