@@ -52,7 +52,7 @@ pub async fn handle_message(bot: Bot, msg: Message, state: Arc<AppState>) -> Res
                 bot.send_message(chat_id, msg).parse_mode(teloxide::types::ParseMode::Html).await?;
             }
             Command::Price => {
-                let price = api_manager.get_price().await.ok().and_then(|v: serde_json::Value| v["price"].as_f64()).unwrap_or(0.0);
+                let price = match api.get_price().await { Ok(v) => v["price"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
                 bot.send_message(chat_id, format!("💰 <b>Current Price:</b> <code>${:.4}</code>", price))
                     .parse_mode(teloxide::types::ParseMode::Html).await?;
             }
@@ -78,5 +78,6 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>) {
         .dispatch()
         .await;
 }
+
 
 

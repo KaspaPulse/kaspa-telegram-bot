@@ -14,6 +14,7 @@ pub mod utils;
 
 
 use crate::state::AppState;
+use crate::api::ApiManager;
 
 #[tokio::main]
 async fn main() {
@@ -104,6 +105,7 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state).await;
 }
+
 
 
 
