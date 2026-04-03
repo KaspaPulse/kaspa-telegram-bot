@@ -53,7 +53,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
         admin_cmds.push(BotCommand::new("restart", "👑 Admin: Reboot Process"));
         admin_cmds.push(BotCommand::new("logs", "👑 Admin: View Last 25 Logs"));
         admin_cmds.push(BotCommand::new("broadcast", "👑 Admin: Send msg to all"));
-        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: teloxide::types::Recipient::Id(teloxide::prelude::ChatId(admin)) }).await;
+        let _ = bot.set_my_commands(admin_cmds).scope(BotCommandScope::Chat { chat_id: teloxide::types::Recipient::Id(ChatId(admin)) }).await;
     }
 
     let handler = dptree::entry()
@@ -66,7 +66,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
 }
 
 fn check_rate_limit(state: &Arc<AppState>, chat_id: i64) -> bool {
-    if state.admin_id == Some(chat_id) { return true; }
+    if Some(chat_id) == state.admin_id { return true; }
     let now = std::time::Instant::now();
     if let Some(mut last_time) = state.rate_limits.get_mut(&chat_id) {
         if now.duration_since(*last_time).as_secs() < 3 { return false; }
@@ -89,7 +89,8 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
             
             { 
                 let mut entry = state.monitored_wallets.entry(valid.clone()).or_insert_with(|| {
-                    is_new = true; WalletData { last_balance: 0.0, chat_ids: vec![cid] }
+                    is_new = true;
+                    WalletData { last_balance: 0.0, chat_ids: vec![cid] }
                 });
                 if !is_new && !entry.chat_ids.contains(&cid) {
                     if entry.chat_ids.len() < MAX_ACCOUNTS_PER_WALLET {
@@ -152,40 +153,44 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             send_msg(&bot, cid, &txt).await?;
         },
         Command::Market => {
-            let p = match api.get_price().await { Ok(v) => v["price"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
-            let m = match api.get_market().await { Ok(v) => v["marketcap"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
+            let p = match api.get_price().await { Ok(v) => v.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0), Err(_) => 0.0 };
+            let m = match api.get_market().await { Ok(v) => v.get("marketcap").and_then(|v| v.as_f64()).unwrap_or(0.0), Err(_) => 0.0 };
             send_msg(&bot, cid, &format!("📈 *Kaspa Market Overview*\n━━━━━━━━━━━━━━━━━━\n🏷️ *Price:* `${:.4}`\n💎 *Market Cap:* `${:.0}`", p, m)).await?;
         },
         Command::Price => {
-            let price = match api.get_price().await { Ok(v) => v["price"].as_f64().unwrap_or(0.0), Err(_) => 0.0 };
+            let price = match api.get_price().await { Ok(v) => v.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0), Err(_) => 0.0 };
             send_msg(&bot, cid, &format!("💵 *Kaspa (KAS) Price*\n━━━━━━━━━━━━━━━━━━\n🏷️ *Current Price:* `${:.4} USD`", price)).await?;
         },
         Command::Network => {
             if let Ok(n) = api.get_network().await {
-                let hr = format_hashrate(n["hashrate"].as_f64().unwrap_or(0.0));
+                let hr_raw = n.get("hashrate").and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))).unwrap_or(0.0);
+                let hr = format_hashrate(hr_raw);
                 send_msg(&bot, cid, &format!("🌐 *Kaspa Network Stats*\n━━━━━━━━━━━━━━━━━━\n⛏️ *Hashrate:* `{}`", hr)).await?;
             }
         },
         Command::Supply => {
             if let Ok(s) = api.get_supply().await {
-                let circ = s["circulatingSupply"].as_u64().unwrap_or(0) as f64 / 100_000_000.0;
-                let max = s["maxSupply"].as_u64().unwrap_or(0) as f64 / 100_000_000.0;
+                let circ_raw = s.get("circulatingSupply").and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))).unwrap_or(0.0);
+                let max_raw = s.get("maxSupply").and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))).unwrap_or(0.0);
+                
+                let circ = circ_raw / 100_000_000.0;
+                let max = max_raw / 100_000_000.0;
                 let mined = if max > 0.0 { (circ / max) * 100.0 } else { 0.0 };
                 send_msg(&bot, cid, &format!("🪙 *Kaspa Supply Info*\n━━━━━━━━━━━━━━━━━━\n🔄 *Circulating:* `{:.0} KAS`\n🛑 *Max Supply:* `{:.0} KAS`\n⛏️ *Mined:* `{:.2}%`", circ, max, mined)).await?;
             }
         },
         Command::Fees => {
             if let Ok(f) = api.get_fees().await {
-                let fee = f["priorityBucket"]["feerate"].as_f64().unwrap_or(0.0);
+                let fee = f.get("priorityBucket").and_then(|b| b.get("feerate")).and_then(|v| v.as_f64()).unwrap_or(0.0);
                 send_msg(&bot, cid, &format!("⛽ *Network Mempool Fees*\n━━━━━━━━━━━━━━━━━━\n🔴 *Priority:* `{:.2} sompi/gram`", fee)).await?;
             }
         },
         Command::Dag => {
             if let Ok(d) = api.get_dag_info().await {
-                let blocks = d["blockCount"].as_u64().unwrap_or(0);
-                let headers = d["headerCount"].as_u64().unwrap_or(0);
-                let diff = d["difficulty"].as_f64().unwrap_or(0.0);
-                let net = d["networkName"].as_str().unwrap_or("Mainnet");
+                let blocks = d.get("blockCount").and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse::<u64>().ok()))).unwrap_or(0);
+                let headers = d.get("headerCount").and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse::<u64>().ok()))).unwrap_or(0);
+                let diff = d.get("difficulty").and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))).unwrap_or(0.0);
+                let net = d.get("networkName").and_then(|v| v.as_str()).unwrap_or("Mainnet");
                 send_msg(&bot, cid, &format!("📦 *Node BlockDAG Details*\n━━━━━━━━━━━━━━━━━━\n🧩 *Network:* `{}`\n🧱 *Blocks:* `{}`\n📑 *Headers:* `{}`\n⚙️ *Difficulty:* `{:.2}`", net, blocks, headers, diff)).await?;
             }
         },
@@ -203,7 +208,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
         
         // --- ADMIN COMMANDS ---
         Command::Sys => {
-            if state.admin_id == Some(cid) {
+            if Some(cid) == state.admin_id {
                 let mut sys = System::new_all();
                 sys.refresh_all();
                 let uptime = state.start_time.elapsed().as_secs();
@@ -221,19 +226,19 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             } else { send_msg(&bot, cid, "⛔ *Access Denied*").await?; }
         },
         Command::Pause => {
-            if state.admin_id == Some(cid) {
+            if Some(cid) == state.admin_id {
                 state.is_monitoring.store(false, std::sync::atomic::Ordering::Relaxed);
                 send_msg(&bot, cid, "⏸️ *Engine Paused*").await?;
             }
         },
         Command::Resume => {
-            if state.admin_id == Some(cid) {
+            if Some(cid) == state.admin_id {
                 state.is_monitoring.store(true, std::sync::atomic::Ordering::Relaxed);
                 send_msg(&bot, cid, "▶️ *Engine Resumed*").await?;
             }
         },
         Command::Restart => {
-            if state.admin_id == Some(cid) {
+            if Some(cid) == state.admin_id {
                 let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
                 let _ = send_msg(&bot, cid, "🔄 *System Reboot Initiated*\n_Saving databases securely before exit..._").await;
                 state.shutdown_token.cancel(); 
@@ -241,16 +246,17 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             }
         },
         Command::Logs => {
-            if state.admin_id == Some(cid) {
-                let logs_content = tokio::fs::read_to_string("kaspa_bot.log").await.unwrap_or_else(|_| "No logs found on disk.".to_string());
+            if Some(cid) == state.admin_id {
+                let logs_content = std::fs::read_to_string("kaspa_bot.log").unwrap_or_else(|_| "No logs found.".to_string());
                 let lines: Vec<&str> = logs_content.lines().collect();
-                let recent_logs = lines.into_iter().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+                let start = if lines.len() > 25 { lines.len() - 25 } else { 0 };
+                let recent_logs = lines[start..].join("\n");
                 let safe_logs = if recent_logs.len() > 3900 { &recent_logs[recent_logs.len()-3900..] } else { &recent_logs };
                 let _ = bot.send_message(msg.chat.id, format!("📜 *Recent System Logs:*\n```text\n{}\n```", safe_logs)).parse_mode(ParseMode::Markdown).await;
             }
         },
         Command::Broadcast(text) => {
-            if state.admin_id == Some(cid) {
+            if Some(cid) == state.admin_id {
                 let users = state.get_all_users();
                 let mut count = 0;
                 for user in &users {
@@ -282,5 +288,3 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
-
-
