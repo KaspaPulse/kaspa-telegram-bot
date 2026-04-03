@@ -12,13 +12,14 @@ use chrono::Utc;
 use crate::state::AppState;
 use crate::utils::helpers::format_short_wallet;
 use crate::api::ApiManager;
+use crate::utils::types::{Sompi, Kaspa};
 
 // Event Payload Struct
 #[derive(Debug, Clone)]
 pub struct UtxoEvent {
     pub tx_id: String,
     pub address: String,
-    pub amount_sompi: f64,
+    pub amount: Sompi,
     pub daa_score: u64,
 }
 
@@ -155,13 +156,13 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
             
             if !state.monitored_wallets.contains_key(&address) { continue; }
             
-            let amount_sompi = match extract_amount(entry) { Some(amt) => amt, None => continue };
+            let amount = match extract_amount(entry) { Some(amt) => amt, None => continue };
             let daa_score = extract_daa_score(entry).unwrap_or(0);
             
             if state.processed_txids.contains_key(&tx_id) { continue; }
             state.processed_txids.insert(tx_id.clone(), std::time::Instant::now());
 
-            let event = UtxoEvent { tx_id, address, amount_sompi, daa_score };
+            let event = UtxoEvent { tx_id, address, amount, daa_score };
             
             // Non-blocking send. If buffer is full, it drops to protect RAM (Backpressure)
             if let Err(e) = tx.try_send(event) {
@@ -174,18 +175,21 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
 // Actual API fetching and DB updating bounded by Semaphore
 #[tracing::instrument(skip(state, bot, api))]
 async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, api: Arc<ApiManager>) {
-    let exact_reward = event.amount_sompi / 100_000_000.0;
+    // [ENTERPRISE FIX] Compiler-Enforced Math. Sompi safely transforms into Kaspa via trait implementation.
+    let exact_reward: Kaspa = event.amount.into();
+    let mut live_bal = Kaspa(0.0);
     let mut live_bal = 0.0;
     
     // 1. Fetch live balance safely via centralized AppError system
     if let Ok(api_bal) = api.get_balance(&event.address).await {
+        live_bal = Kaspa(api_bal);
         live_bal = api_bal;
     }
 
     // 2. Safely update RAM state
     if let Some(mut wallet) = state.monitored_wallets.get_mut(&event.address) {
-        if live_bal == 0.0 { live_bal = wallet.last_balance + exact_reward; }
-        wallet.last_balance = live_bal;
+        if live_bal.0 == 0.0 { live_bal = Kaspa(wallet.last_balance + exact_reward.0); }
+        wallet.last_balance = live_bal.0;
     }
     
     // 3. Atomic SQLite DB flush for this specific wallet
@@ -195,7 +199,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     let short_wallet = format_short_wallet(&event.address);
     
     let build_msg = |b: &str, a: &str, m: &str| -> String {
-        format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{:.8} KAS`\n*Live Balance:* `{:.8} KAS`\n━━━━━━━━━━━━━━━━━━\n*Mined Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", 
+        format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{} KAS`\n*Live Balance:* `{} KAS`\n━━━━━━━━━━━━━━━━━━\n*Mined Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", 
         dt_str, short_wallet, format!("https://kaspa.stream/addresses/{}", event.address), exact_reward, live_bal, m, a, event.daa_score)
     };
 
@@ -210,6 +214,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
 
 fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_then(|o| o.get("transactionId")).and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
-fn extract_amount(entry: &Value) -> Option<f64> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_f64()) }
+fn extract_amount(entry: &Value) -> Option<Sompi> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_u64()).map(Sompi) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
+
 
