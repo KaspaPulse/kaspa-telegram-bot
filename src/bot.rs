@@ -213,7 +213,7 @@ async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, 
             if Some(cid) == state.admin_id {
                 let _ = tokio::fs::write(".restart_flag", cid.to_string()).await;
                 let _ = bot.send_message(msg.chat.id, "🔄 *System Reboot Initiated*").parse_mode(ParseMode::Markdown).await;
-                std::process::exit(0);
+                state.shutdown_token.cancel(); tokio::spawn(async move { tokio::time::sleep(std::time::Duration::from_secs(3)).await; std::process::exit(0); });
             }
         },
         Command::Logs => {
@@ -258,5 +258,6 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
 
 

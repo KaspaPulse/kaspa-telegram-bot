@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
+use tokio_util::sync::CancellationToken;
 
 pub const MAX_ACCOUNTS_PER_WALLET: usize = 2;
 
@@ -37,10 +38,11 @@ pub struct AppState {
     pub admin_id: Option<i64>,
     pub start_time: Instant,
     pub rate_limits: DashMap<i64, Instant>,
+    pub shutdown_token: CancellationToken,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    pub fn new(shutdown_token: CancellationToken) -> Self {
         let admin_id = std::env::var("ADMIN_ID").ok().and_then(|v| v.trim().parse::<i64>().ok());
         let state = Self {
             monitored_wallets: DashMap::new(),
@@ -51,6 +53,7 @@ impl AppState {
             admin_id,
             start_time: Instant::now(),
             rate_limits: DashMap::new(),
+            shutdown_token,
         };
         state.load_wallets();
         state
@@ -88,5 +91,6 @@ impl AppState {
         users.into_iter().collect()
     }
 }
+
 
 

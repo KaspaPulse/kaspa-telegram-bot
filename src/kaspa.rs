@@ -138,6 +138,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                 log::error!("❌ [NODE FATAL] Fail: {}", e);
             }
         }
+        if state.shutdown_token.is_cancelled() { return; }
         log::warn!("🔄 Reconnecting in 5s...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
@@ -239,6 +240,7 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
+
 
 
 
