@@ -86,9 +86,9 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [CRITICAL FIX]: Use Kaspa Native Protobuf-JSON format!
-                                // NO "jsonrpc", NO "method", NO "params". Just the Request Name as the Key.
+                                // [CRITICAL FIX]: Added "id": 1 to prevent Node from dropping the connection!
                                 let sub_req = json!({
+                                    "id": 1, 
                                     "notifyUtxosChangedRequest": {
                                         "addresses": addrs
                                     }
@@ -122,7 +122,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                                 tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
                                             }
                                         }
-                                        // 3. Process General Errors
+                                        // 3. General Errors
                                         else if let Some(err) = parsed.get("error") {
                                             tracing::error!("❌ [NODE ERROR]: {}", err);
                                         }
