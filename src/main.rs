@@ -103,8 +103,9 @@ async fn main() {
     });
 
     // Start the Telegram Polling Engine
-    bot::start_telegram_bot(bot_client, state).await;
+    bot::start_telegram_bot(bot_client, state, api).await;
 }
+
 
 
 
