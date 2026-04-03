@@ -18,8 +18,8 @@ fn build_msg(
     tx_id: &str, short_tx_id: &str, mined: &str, tx_block: &str, accepting: &str, daa: u64
 ) -> String {
     format!(
-        "⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* {}\n*Wallet:* [{}](https://kaspa.stream/addresses/{})\n*Amount:* +{:.8} KAS\n*Live Balance:* {:.8} KAS\n━━━━━━━━━━━━━━━━━━\n*TXID:* [{}](https://kaspa.stream/transactions/{})\n*Mined Block:* {}\n*TX Block:* {}\n*Accepting Block:* {}\n*DAA Score:* {}",
-        time_str, short_wallet, wallet, amount, live_bal, short_tx_id, tx_id, mined, tx_block, accepting, daa
+        "⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.8} KAS</code>\n<b>Live Balance:</b> <code>{:.8} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"https://kaspa.stream/transactions/{}\">{}</a>\n<b>Mined Block:</b> {}\n<b>TX Block:</b> {}\n<b>Accepting Block:</b> {}\n<b>DAA Score:</b> <code>{}</code>",
+        time_str, wallet, short_wallet, amount, live_bal, tx_id, short_tx_id, mined, tx_block, accepting, daa
     )
 }
 
@@ -45,19 +45,19 @@ pub async fn process_reward(tx_id: String, address: String, amount_kas: f64, daa
     let short_wallet = crate::utils::helpers::format_short_wallet(&address);
     let short_tx = shorten(&tx_id, 8);
 
-    // 3. Build Initial "Searching..." Message
+    // 3. Build Initial "Searching..." Message using HTML tags
     let initial_msg = build_msg(
         &time_str, &address, &short_wallet, amount_kas, live_bal, &tx_id, &short_tx,
-        "⏳ Searching...", "⏳ Searching...", "⏳ Indexing...", daa_score
+        "⏳ <code>Searching...</code>", "⏳ <code>Searching...</code>", "⏳ <code>Indexing...</code>", daa_score
     );
 
-    // 4. Send Message to Users
+    // 4. Send Message to Users (Changed to ParseMode::Html)
     let mut message_refs = Vec::new();
     if let Some(wallet_data) = state.monitored_wallets.get(&address) {
         for chat_id in &wallet_data.value().chat_ids {
             log::info!("[BOT OUT] Chat ID: {} | Msg: Initial Reward Sent", chat_id);
             if let Ok(sent_msg) = bot.send_message(teloxide::types::ChatId(*chat_id), &initial_msg)
-                .parse_mode(ParseMode::Markdown)
+                .parse_mode(ParseMode::Html)
                 .disable_web_page_preview(true)
                 .await 
             {
@@ -110,7 +110,6 @@ async fn poll_api_and_edit(
                         if let Ok(block_res) = client.get(&format!("https://api.kaspa.org/blocks/{}", b_hash)).send().await {
                             if let Ok(block_json) = block_res.json::<Value>().await {
                                 if let Some(blues) = block_json.get("merge_set_blues_hashes").and_then(|v| v.as_array()) {
-                                    // Simplified logic: Grab first blue hash as mined block
                                     if let Some(first_blue) = blues.first().and_then(|v| v.as_str()) {
                                         mined_hash = first_blue.to_string();
                                     }
@@ -118,9 +117,10 @@ async fn poll_api_and_edit(
                             }
                         }
 
-                        let b_link = format!("[{}](https://kaspa.stream/blocks/{})", shorten(b_hash, 8), b_hash);
-                        let a_link = if a_hash.is_empty() { "N/A".to_string() } else { format!("[{}](https://kaspa.stream/blocks/{})", shorten(a_hash, 8), a_hash) };
-                        let m_link = if mined_hash.is_empty() { "Not Found".to_string() } else { format!("[{}](https://kaspa.stream/blocks/{})", shorten(&mined_hash, 8), mined_hash) };
+                        // Formatting links with HTML tags
+                        let b_link = format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", b_hash, shorten(b_hash, 8));
+                        let a_link = if a_hash.is_empty() { "<code>N/A</code>".to_string() } else { format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", a_hash, shorten(a_hash, 8)) };
+                        let m_link = if mined_hash.is_empty() { "<code>Not Found</code>".to_string() } else { format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", mined_hash, shorten(&mined_hash, 8)) };
 
                         let final_msg = build_msg(
                             &time_str, &address, &short_wallet, amount_kas, live_bal, &tx_id, &short_tx,
@@ -130,8 +130,9 @@ async fn poll_api_and_edit(
                         if let Some(tracker) = state.active_trackers.get(&tx_id) {
                             for m in &tracker.messages {
                                 log::info!("[BOT EDIT] Chat ID: {} | Msg ID: {} | Updating Hashes", m.chat_id, m.message_id);
+                                // Using ParseMode::Html for edits as well
                                 let _ = bot.edit_message_text(teloxide::types::ChatId(m.chat_id), teloxide::types::MessageId(m.message_id), &final_msg)
-                                    .parse_mode(ParseMode::Markdown)
+                                    .parse_mode(ParseMode::Html)
                                     .disable_web_page_preview(true)
                                     .await;
                             }
