@@ -125,7 +125,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                                     parse_utxos_and_queue(params, &state, &tx_event).await;
                                                 }
                                             }
-                                        } else if let Some(result) = parsed.get("result") {
+                                        } else if let Some(_result) = parsed.get("result") {
                                              tracing::info!("📥 [NODE ACK] Subscription Successful");
                                         }
                                     }
@@ -178,7 +178,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     // [ENTERPRISE FIX] Compiler-Enforced Math. Sompi safely transforms into Kaspa via trait implementation.
     let exact_reward: Kaspa = event.amount.into();
     let mut live_bal = Kaspa(0.0);
-    let mut live_bal = 0.0;
+    let mut live_bal = Kaspa(0.0);
     
     // 1. Fetch live balance safely via centralized AppError system
     if let Ok(api_bal) = api.get_balance(&event.address).await {
@@ -208,7 +208,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     for chat_id in subscribers {
         // [BEST PRACTICE] Telegram API Rate Limiting: Max 30 msgs/sec
         tokio::time::sleep(Duration::from_millis(40)).await;
-        let _ = bot.send_message(ChatId(chat_id), build_msg("...", "...", "...")).parse_mode(ParseMode::Markdown).await;
+        let _ = bot.send_message(ChatId(chat_id), build_msg("...", "...", "...")).parse_mode(ParseMode::MarkdownV2).await;
     }
 }
 
@@ -216,5 +216,6 @@ fn extract_tx_id(entry: &Value) -> Option<String> { entry.get("outpoint").and_th
 fn extract_address(entry: &Value) -> Option<String> { entry.get("address").and_then(|v| v.as_str().map(|s| s.to_string())) }
 fn extract_amount(entry: &Value) -> Option<Sompi> { entry.get("utxoEntry").and_then(|u| u.get("amount")).and_then(|v| v.as_u64()).map(Sompi) }
 fn extract_daa_score(entry: &Value) -> Option<u64> { entry.get("utxoEntry").and_then(|u| u.get("blockDaaScore")).and_then(|v| v.as_u64()) }
+
 
 

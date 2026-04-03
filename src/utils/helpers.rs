@@ -57,3 +57,25 @@ pub fn format_difficulty(val: f64) -> String {
     else if val >= 1_000_000_000.0 { format!("{:.2} G", val / 1_000_000_000.0) }
     else { format!("{:.2}", val) }
 }
+
+
+use reqwest::Client;
+use serde_json::Value;
+use teloxide::types::{InlineKeyboardMarkup, InlineKeyboardButton};
+
+pub fn sanitize_html(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+pub async fn fetch_json_safe(url: &str, _limit: usize) -> Option<Value> {
+    let client = Client::builder().timeout(std::time::Duration::from_secs(5)).build().ok()?;
+    client.get(url).send().await.ok()?.json::<Value>().await.ok()
+}
+
+pub fn main_keyboard() -> InlineKeyboardMarkup {
+    InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::callback("💰 Balances", "cmd_balance"), InlineKeyboardButton::callback("📋 Tracked", "cmd_list")],
+        vec![InlineKeyboardButton::callback("📊 Market", "cmd_market"), InlineKeyboardButton::callback("⛽ Fees", "cmd_fees")],
+        vec![InlineKeyboardButton::callback("🌐 Network", "cmd_network"), InlineKeyboardButton::callback("🪙 Supply", "cmd_supply")],
+    ])
+}
