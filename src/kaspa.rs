@@ -66,12 +66,16 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
         
         tracing::info!("[NODE] Connecting to wRPC at {}...", ws_url);
 
-        let request = match ws_url.clone().into_client_request() {
+        let mut request = match ws_url.clone().into_client_request() {
             Ok(req) => req,
             Err(_) => { tokio::time::sleep(Duration::from_secs(5)).await; continue; }
         };
+        
+        // [SECRET 1]: We MUST tell Kaspa node we speak JSON, otherwise it expects Binary and crashes!
+        if let Ok(header_val) = "wrpc-json".parse() { 
+            request.headers_mut().insert("sec-websocket-protocol", header_val); 
+        }
 
-        // Removed complex headers that caused connection resets
         match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
                 tracing::info!("[NODE] Connected! Handshaking...");
@@ -86,14 +90,13 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // Exact match to kaspa-wasm JSON-RPC format
+                                // [SECRET 2]: Kaspa wRPC params must be an ARRAY of arguments. 
+                                // Since addresses is an array, it becomes an array inside an array [ [ "kaspa:..." ] ]
                                 let sub_req = json!({
-                                    "jsonrpc": "1.0",
+                                    "jsonrpc": "2.0",
                                     "id": 1,
-                                    "method": "notifyUtxosChangedRequest",
-                                    "params": {
-                                        "addresses": addrs
-                                    }
+                                    "method": "notifyUtxosChanged",
+                                    "params": [ addrs ] 
                                 });
                                 
                                 let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
@@ -111,8 +114,10 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                         // 1. Process Live Reward Notifications
                                         if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
                                             if method == "utxosChangedNotification" {
-                                                if let Some(params) = parsed.get("params") {
-                                                    parse_utxos_and_queue(params, &state, &tx_event).await;
+                                                if let Some(params) = parsed.get("params").and_then(|p| p.as_array()) {
+                                                    if let Some(notification) = params.get(0) {
+                                                        parse_utxos_and_queue(notification, &state, &tx_event).await;
+                                                    }
                                                 }
                                             }
                                         } 
@@ -130,6 +135,10 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                                     tracing::info!("[NODE ACK] UTXO Subscription Active!");
                                                 }
                                             }
+                                        }
+                                        // 3. Catch General Errors
+                                        else if let Some(err) = parsed.get("error") {
+                                            tracing::error!("[NODE ERROR]: {}", err);
                                         }
                                     }
                                 }
@@ -178,8 +187,8 @@ async fn parse_utxos_and_queue(payload: &Value, state: &Arc<AppState>, tx: &mpsc
 
 macro_rules! build_reward_msg {
     ($b_hash:expr, $a_hash:expr, $m_hash:expr, $dt:expr, $s_wal:expr, $addr:expr, $amt:expr, $bal:expr, $s_tx:expr, $tx_link:expr, $daa:expr) => {
-        format!("⚡ *Native Node Reward!* 💎\n━━━━━━━━━━━━━━━━━━\n*Time:* `{}`\n*Wallet:* [{}]({})\n*Amount:* `+{} KAS`\n*Live Balance:* `{} KAS`\n━━━━━━━━━━━━━━━━━━\n*TXID:* [{}]({})\n*Mined Block:* {}\n*TX Block:* {}\n*Accepting Block:* {}\n*DAA Score:* `{}`", 
-        $dt, $s_wal, format!("https://kaspa.stream/addresses/{}", $addr), $amt, $bal, $s_tx, $tx_link, $m_hash, $b_hash, $a_hash, $daa)
+        format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{} KAS</code>\n<b>Live Balance:</b> <code>{} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"{}\">{}</a>\n<b>Mined Block:</b> {}\n<b>TX Block:</b> {}\n<b>Accepting Block:</b> {}\n<b>DAA Score:</b> <code>{}</code>", 
+        $dt, $addr, $s_wal, $amt, $bal, $tx_link, $s_tx, $m_hash, $b_hash, $a_hash, $daa)
     }
 }
 
@@ -204,7 +213,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     let short_tx_id = format!("{}...{}", &tx_id[..8], &tx_id[tx_id.len()-8..]);
     let tx_link = format!("https://kaspa.stream/transactions/{}", tx_id);
 
-    let initial_msg = build_reward_msg!("⏳ `Searching...`", "⏳ `Indexing...`", "⏳ `Searching...`", dt_str, short_wallet, full_address, exact_reward, live_bal, short_tx_id, tx_link, event.daa_score);
+    let initial_msg = build_reward_msg!("⏳ <code>Searching...</code>", "⏳ <code>Indexing...</code>", "⏳ <code>Searching...</code>", dt_str, short_wallet, full_address, exact_reward, live_bal, short_tx_id, tx_link, event.daa_score);
 
     tracing::info!("[PROCESS] NEW REWARD: {} KAS | TX: {} | Sent initial alert, starting API poll.", exact_reward, tx_id);
 
@@ -213,7 +222,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     for chat_id in subscribers {
         tokio::time::sleep(Duration::from_millis(40)).await;
         
-        if let Ok(sent_msg) = bot.send_message(ChatId(chat_id), &initial_msg).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await {
+        if let Ok(sent_msg) = bot.send_message(ChatId(chat_id), &initial_msg).parse_mode(ParseMode::Html).disable_web_page_preview(true).await {
             let msg_id = sent_msg.id;
             let b_clone = bot.clone();
             let a_clone = api.clone();
@@ -236,8 +245,8 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
 
                     if attempts > 45 {
                         tracing::warn!("[TIMEOUT] Gave up on TX {}", t_id);
-                        let failed_msg = build_reward_msg!("❌ `Timeout`", "❌ `Timeout`", "❌ `Timeout`", dt, s_wal, addr, exact_reward, live_bal, s_tx, t_link, d_score);
-                        let _ = b_clone.edit_message_text(ChatId(chat_id), msg_id, failed_msg).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await;
+                        let failed_msg = build_reward_msg!("❌ <code>Timeout</code>", "❌ <code>Timeout</code>", "❌ <code>Timeout</code>", dt, s_wal, addr, exact_reward, live_bal, s_tx, t_link, d_score);
+                        let _ = b_clone.edit_message_text(ChatId(chat_id), msg_id, failed_msg).parse_mode(ParseMode::Html).disable_web_page_preview(true).await;
                         break;
                     }
 
@@ -246,15 +255,15 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                             if let Some(b_hash_arr) = tx_data.get("block_hash").and_then(|v: &Value| v.as_array()) {
                                 if let Some(b_hash_full) = b_hash_arr.get(0).and_then(|v: &Value| v.as_str()) {
                                     let b_hash_display = format!("{}...{}", &b_hash_full[..8], &b_hash_full[b_hash_full.len()-8..]);
-                                    let b_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", b_hash_display, b_hash_full);
+                                    let b_hash_link = format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", b_hash_full, b_hash_display);
 
-                                    let mut a_hash_link = "`N/A`".to_string();
+                                    let mut a_hash_link = "<code>N/A</code>".to_string();
                                     if let Some(a_hash) = tx_data.get("accepting_block_hash").and_then(|v: &Value| v.as_str()) {
                                         let a_hash_display = format!("{}...{}", &a_hash[..8], &a_hash[a_hash.len()-8..]);
-                                        a_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", a_hash_display, a_hash);
+                                        a_hash_link = format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", a_hash, a_hash_display);
                                     }
 
-                                    let mut mined_hash_link = "`Not Found`".to_string();
+                                    let mut mined_hash_link = "<code>Not Found</code>".to_string();
                                     if let Ok(block_res) = a_clone.client.get(&format!("https://api.kaspa.org/blocks/{}", b_hash_full)).send().await {
                                         if let Ok(block_data) = block_res.json::<Value>().await {
                                             if let Some(blues) = block_data.get("merge_set_blues_hashes").and_then(|v: &Value| v.as_array()) {
@@ -269,7 +278,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                                                 if let Some(mined_hash_val) = blues.get(idx).or_else(|| blues.get(0)) {
                                                     if let Some(mined_hash) = mined_hash_val.as_str() {
                                                         let m_hash_display = format!("{}...{}", &mined_hash[..8], &mined_hash[mined_hash.len()-8..]);
-                                                        mined_hash_link = format!("[{}](https://kaspa.stream/blocks/{})", m_hash_display, mined_hash);
+                                                        mined_hash_link = format!("<a href=\"https://kaspa.stream/blocks/{}\">{}</a>", mined_hash, m_hash_display);
                                                     }
                                                 }
                                             }
@@ -277,7 +286,7 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
                                     }
 
                                     let updated_msg = build_reward_msg!(&b_hash_link, &a_hash_link, &mined_hash_link, dt, s_wal, addr, exact_reward, live_bal, s_tx, t_link, d_score);
-                                    let _ = b_clone.edit_message_text(ChatId(chat_id), msg_id, updated_msg).parse_mode(ParseMode::Markdown).disable_web_page_preview(true).await;
+                                    let _ = b_clone.edit_message_text(ChatId(chat_id), msg_id, updated_msg).parse_mode(ParseMode::Html).disable_web_page_preview(true).await;
                                     break;
                                 }
                             }
