@@ -1,4 +1,4 @@
-﻿#![allow(deprecated, unused_variables)]
+#![allow(deprecated, unused_variables)]
 use chrono::Utc;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
@@ -204,6 +204,8 @@ async fn handle_utxos_changed(
                     None => return,
                 };
                 for chat_id in subscribers {
+                    // [BEST PRACTICE] Telegram API Rate Limiting: Max 30 msgs/sec
+                    tokio::time::sleep(Duration::from_millis(40)).await;
                     let _ = bot_clone
                         .send_message(ChatId(chat_id), build_msg("...", "...", "..."))
                         .parse_mode(ParseMode::Markdown)
@@ -237,3 +239,4 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
+
