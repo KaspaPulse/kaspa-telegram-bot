@@ -32,6 +32,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
     let worker_bot = bot.clone();
     let worker_api = api.clone();
 
+    // Background processing worker
     tokio::spawn(async move {
         while let Some(event) = rx_event.recv().await {
             let sem = api_semaphore.clone();
@@ -55,49 +56,42 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
         match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
                 tracing::info!("✅ [NODE] Connected!");
-                let mut last_count = 0;
+                
+                // Subscription Logic - Run ONCE per connection
+                let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
+                if !addrs.is_empty() {
+                    let sub_req = json!({
+                        "jsonrpc": "1.0",
+                        "id": 1,
+                        "method": "notifyUtxosChangedRequest",
+                        "params": { "addresses": addrs }
+                    });
+                    let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
+                    tracing::info!("🔄 [NODE] Subscribed to {} wallets.", addrs.len());
+                }
 
-                loop {
-                    tokio::select! {
-                        _ = tokio::time::sleep(Duration::from_secs(5)) => {
-                            let current_count = state.monitored_wallets.len();
-                            if current_count != last_count && current_count > 0 {
-                                last_count = current_count;
-                                let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
-                                
-                                // THE FIX: Standard JSON-RPC 1.0 + Newline (\n)
-                                let sub_req = json!({
-                                    "jsonrpc": "1.0",
-                                    "id": 1,
-                                    "method": "notifyUtxosChangedRequest",
-                                    "params": { "addresses": addrs }
-                                });
-                                
-                                let mut payload = sub_req.to_string();
-                                payload.push('\n'); 
-                                let _ = ws_stream.send(Message::Text(payload)).await;
-                                tracing::info!("🔄 [NODE] Subscription Sent for {} wallets.", current_count);
-                            }
-                        }
-                        msg = ws_stream.next() => {
-                            match msg {
-                                Some(Ok(Message::Text(text))) => {
-                                    if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                        if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
-                                            if method == "utxosChangedNotification" {
-                                                parse_utxos_and_queue(parsed.get("params").unwrap_or(&json!({})), &state, &tx_event).await;
-                                            }
+                // Listen Loop
+                while let Some(msg) = ws_stream.next().await {
+                    match msg {
+                        Ok(Message::Text(text)) => {
+                            if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
+                                if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
+                                    if method == "utxosChangedNotification" {
+                                        if let Some(params) = parsed.get("params") {
+                                            parse_utxos_and_queue(params, &state, &tx_event).await;
                                         }
                                     }
                                 }
-                                _ => break,
                             }
                         }
+                        _ => break, // Break to reconnect on error/close
                     }
                 }
             }
             Err(_) => tokio::time::sleep(Duration::from_secs(5)).await,
         }
+        tracing::warn!("⚠️ [NODE] Connection lost. Reconnecting in 5s...");
+        tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }
 
@@ -122,18 +116,15 @@ async fn process_reward_event(event: UtxoEvent, state: Arc<AppState>, bot: Bot, 
     let kas: Kaspa = event.amount.into();
     let bal = api.get_balance(&event.address).await.unwrap_or(0.0);
     
-    let msg = format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{} UTC</code>\n<b>Wallet:</b> <code>{}</code>\n<b>Amount:</b> <code>+{} KAS</code>\n<b>Balance:</b> <code>{} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"https://kaspa.stream/transactions/{}\">View</a>\n<b>DAA Score:</b> <code>{}</code>", 
+    let msg = format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{} UTC</code>\n<b>Wallet:</b> <code>{}</code>\n<b>Amount:</b> <code>+{} KAS</code>\n<b>Balance:</b> <code>{} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> <a href=\"https://kaspa.stream/transactions/{}\">View Transaction</a>\n<b>DAA Score:</b> <code>{}</code>", 
         Utc::now().format("%Y-%m-%d %H:%M:%S"), format_short_wallet(&event.address), kas.0, bal, event.tx_id, event.daa_score);
 
     if let Some(wallet) = state.monitored_wallets.get(&event.address) {
         for &chat_id in &wallet.chat_ids {
-            let _ = bot.send_message(ChatId(chat_id), &msg).parse_mode(ParseMode::Html).disable_web_page_preview(true).await;
+            let _ = bot.send_message(ChatId(chat_id), &msg)
+                .parse_mode(ParseMode::Html)
+                .disable_web_page_preview(true)
+                .await;
         }
     }
 }
-
- // Placeholder for compatibility
-
-
-
-
