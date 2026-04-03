@@ -2,7 +2,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use dotenvy::dotenv;
 use tokio_util::sync::CancellationToken;
-use secrecy::{Secret, ExposeSecret};
+use secrecy::{SecretString, ExposeSecret};
 
 pub mod api;
 pub mod bot;
@@ -15,21 +15,27 @@ use crate::api::ApiManager;
 
 #[tokio::main]
 async fn main() {
-    // 1. Load Environment Variables
+    // Load Environment Variables
     dotenv().ok();
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+    
+    // [ENTERPRISE FIX] Initialize Tracing (Replaces old env_logger)
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_thread_ids(true)
+        .with_level(true)
+        .init();
+        
     tracing::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
 
-    // [ENTERPRISE FIX] Secure Secret Management
-    // Read the token and immediately wrap it in a memory-safe Secret String
+    // [ENTERPRISE FIX] Secure Secret Management using SecretString
     let raw_token = std::env::var("BOT_TOKEN")
         .or_else(|_| std::env::var("TELOXIDE_TOKEN"))
         .expect("❌ FATAL ERROR: BOT_TOKEN is missing in .env file");
         
-    let secret_token = Secret::new(raw_token);
+    let secret_token = SecretString::from(raw_token);
     tracing::info!("🔐 Bot Token securely loaded into Zeroized Memory.");
 
-    // [ENTERPRISE FIX] Global Graceful Shutdown Token
+    // Global Graceful Shutdown Token
     let shutdown_token = CancellationToken::new();
     let state = Arc::new(AppState::new(shutdown_token.clone()));
     let api = Arc::new(ApiManager::new());
@@ -57,4 +63,3 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state, api).await;
 }
-

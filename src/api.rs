@@ -1,126 +1,55 @@
-use reqwest::Client;
-use crate::utils::errors::{AppError, AppResult};
 use serde_json::Value;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use dashmap::DashMap;
+use reqwest::Client;
+use crate::utils::errors::{AppError, AppResult};
 
-const CACHE_TTL_SECONDS: u64 = 60;
+#[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum CacheType { Price, Market, Fees, Network, Supply, Dag }
 
-#[derive(Clone)]
-pub struct CachedData {
-    pub data: Value,
-    pub fetched_at: Instant,
-}
+struct CacheEntry { data: Value, timestamp: Instant }
 
 pub struct ApiManager {
     client: Client,
-    price_cache: RwLock<Option<CachedData>>,
-    market_cache: RwLock<Option<CachedData>>,
-    fees_cache: RwLock<Option<CachedData>>,
-    network_cache: RwLock<Option<CachedData>>,
-    supply_cache: RwLock<Option<CachedData>>,
-    dag_cache: RwLock<Option<CachedData>>,
-}
-
-enum CacheType {
-    Price,
-    Market,
-    Fees,
-    Network,
-    Supply,
-    Dag,
+    cache: DashMap<CacheType, CacheEntry>,
 }
 
 impl ApiManager {
     pub fn new() -> Self {
         Self {
-            client: Client::builder()
-                .timeout(Duration::from_secs(5))
-                .build()
-                .unwrap(),
-            price_cache: RwLock::new(None),
-            market_cache: RwLock::new(None),
-            fees_cache: RwLock::new(None),
-            network_cache: RwLock::new(None),
-            supply_cache: RwLock::new(None),
-            dag_cache: RwLock::new(None),
+            client: Client::builder().timeout(Duration::from_secs(5)).build().unwrap_or_default(),
+            cache: DashMap::new(),
         }
     }
 
-    pub async fn get_price(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/price", CacheType::Price)
-            .await
-    }
-    pub async fn get_market(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/marketcap", CacheType::Market)
-            .await
-    }
-    pub async fn get_fees(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/fee-estimate", CacheType::Fees)
-            .await
-    }
-    pub async fn get_network(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/hashrate", CacheType::Network)
-            .await
-    }
-    pub async fn get_supply(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/coinsupply", CacheType::Supply)
-            .await
-    }
-    pub async fn get_dag(&self) -> AppResult<Value> {
-        self.fetch_with_cache("https://api.kaspa.org/info/blockdag", CacheType::Dag)
-            .await
+    async fn fetch_with_cache(&self, url: &str, cache_type: CacheType) -> AppResult<Value> {
+        if let Some(entry) = self.cache.get(&cache_type) {
+            if entry.timestamp.elapsed() < Duration::from_secs(60) {
+                return Ok(entry.value().data.clone());
+            }
+        }
+        // The '?' operator now automatically converts reqwest::Error into AppError::Api
+        let res = self.client.get(url).send().await?.json::<Value>().await?;
+        self.cache.insert(cache_type, CacheEntry { data: res.clone(), timestamp: Instant::now() });
+        Ok(res)
     }
 
-    pub async fn get_balance(&self, address: &str) -> Result<f64, reqwest::Error> {
-        let url = format!("https://api.kaspa.org/addresses/{}/balance", address);
+    pub async fn get_price(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/price", CacheType::Price).await }
+    #[allow(dead_code)]
+    pub async fn get_market(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/marketcap", CacheType::Market).await }
+    #[allow(dead_code)]
+    pub async fn get_fees(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/fee-estimate", CacheType::Fees).await }
+    pub async fn get_network(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/hashrate", CacheType::Network).await }
+    pub async fn get_supply(&self) -> AppResult<Value> { self.fetch_with_cache("https://api.kaspa.org/info/coinsupply/circulating", CacheType::Supply).await }
+    
+    pub async fn get_balance(&self, addr: &str) -> AppResult<f64> {
+        let url = format!("https://api.kaspa.org/addresses/{}/balance", addr);
         let res = self.client.get(&url).send().await?.json::<Value>().await?;
-        let bal = res.get("balance").and_then(|v| v.as_f64()).unwrap_or(0.0);
-        Ok(bal / 100_000_000.0)
-    }
-
-    async fn fetch_with_cache(
-        &self,
-        url: &str,
-        cache_type: CacheType,
-    ) -> AppResult<Value> {
-        let cache_lock = match cache_type {
-            CacheType::Price => &self.price_cache,
-            CacheType::Market => &self.market_cache,
-            CacheType::Fees => &self.fees_cache,
-            CacheType::Network => &self.network_cache,
-            CacheType::Supply => &self.supply_cache,
-            CacheType::Dag => &self.dag_cache,
-        };
-
-        {
-            let cache = cache_lock.read().await;
-            if let Some(cached) = &*cache {
-                if cached.fetched_at.elapsed().as_secs() < CACHE_TTL_SECONDS {
-                    return Ok(cached.data.clone());
-                }
-            }
-        }
-
-        match self.client.get(url).send().await {
-            Ok(response) => {
-                let data = response.json::<Value>().await?;
-                let mut cache = cache_lock.write().await;
-                *cache = Some(CachedData {
-                    data: data.clone(),
-                    fetched_at: Instant::now(),
-                });
-                Ok(data)
-            }
-            Err(e) => {
-                let cache = cache_lock.read().await;
-                if let Some(cached) = &*cache {
-                    Ok(cached.data.clone())
-                } else {
-                    Err(e)
-                }
-            }
-        }
+        let balance = res.get("balance")
+            .and_then(|v| v.as_f64())
+            .map(|b| b / 100_000_000.0)
+            .unwrap_or(0.0);
+        Ok(balance)
     }
 }
-

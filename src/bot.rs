@@ -7,7 +7,7 @@ use crate::state::{AppState, WalletData, MAX_ACCOUNTS_PER_WALLET};
 use crate::api::ApiManager;
 use crate::utils::helpers::{clean_and_validate_wallet, format_short_wallet, format_hashrate};
 
-#[derive(BotCommands, Clone)]
+#[derive(BotCommands, Clone, Debug)]
 #[command(rename_rule = "lowercase")]
 pub enum Command {
     Start, Help, Add(String), Remove(String), List, Balance, Price, Market, Fees, Network, Supply, Dag,
@@ -259,6 +259,7 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
 
 
 
