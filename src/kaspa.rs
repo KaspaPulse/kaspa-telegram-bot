@@ -87,7 +87,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [THE ULTIMATE FIX]: Send request using Standard JSON-RPC 2.0 format, but as a BINARY message
+                                // [THE ULTIMATE FIX]: Send request using Standard JSON-RPC 2.0 format
                                 let sub_req = json!({
                                     "jsonrpc": "2.0",
                                     "id": 1,
@@ -111,9 +111,13 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                         }
                         msg = ws_stream.next() => {
                             match msg {
-                                // Accept both Text and Binary responses from the node
-                                Some(Ok(Message::Text(text))) | Some(Ok(Message::Binary(text))) => {
-                                    let json_str = String::from_utf8_lossy(if let Message::Binary(b) = text { &b } else { text.to_text().unwrap().as_bytes() });
+                                // [COMPILER FIX]: Safely extract String from either Text or Binary Message
+                                Some(Ok(msg_content)) => {
+                                    let json_str = match msg_content {
+                                        Message::Text(t) => t,
+                                        Message::Binary(b) => String::from_utf8_lossy(&b).to_string(),
+                                        _ => continue, // Ignore Pings/Pongs/Close frames safely
+                                    };
                                     
                                     if let Ok(parsed) = serde_json::from_str::<Value>(&json_str) {
                                         // 1. Process Live Reward Notifications
@@ -143,16 +147,11 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                         }
                                     }
                                 }
-                                Some(Ok(Message::Close(c))) => { 
-                                    tracing::warn!("⚠️ [NODE] Connection closed by server: {:?}", c); 
-                                    break; 
-                                }
                                 Some(Err(e)) => { 
                                     tracing::error!("❌ [NODE] WebSocket Error: {}", e); 
                                     break; 
                                 }
                                 None => break,
-                                _ => {}
                             }
                         }
                     }
