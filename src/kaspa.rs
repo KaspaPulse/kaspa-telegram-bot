@@ -19,7 +19,7 @@ pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
         let mut request = match ws_url.clone().into_client_request() {
             Ok(req) => req,
             Err(e) => {
-                log::error!("[NODE] Invalid WebSocket URL: {}", e);
+                log::error!("❌ [NODE] Invalid WebSocket URL: {}", e);
                 sleep(Duration::from_secs(10)).await;
                 continue;
             }
@@ -33,12 +33,14 @@ pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
 
                 let wallets: Vec<String> = state.monitored_wallets.iter().map(|e| e.key().clone()).collect();
                 if !wallets.is_empty() {
+                    // [FIX] Added strict 'id' required by Rusty-Kaspa wRPC
                     let sub_request = serde_json::json!({
-                        "notifyUtxosChangedRequest": { "addresses": wallets }
+                        "notifyUtxosChangedRequest": { "addresses": wallets },
+                        "id": 1 
                     });
                     
                     if let Err(e) = ws_stream.send(tokio_tungstenite::tungstenite::Message::Text(sub_request.to_string())).await {
-                        log::error!("[NODE] Failed to send subscription: {}", e);
+                        log::error!("❌ [NODE] Failed to send subscription: {}", e);
                     } else {
                         log::info!("🔄 [NODE] Subscription Sent for {} wallets.", wallets.len());
                     }
@@ -48,17 +50,22 @@ pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
                     match msg {
                         Ok(tokio_tungstenite::tungstenite::Message::Text(text)) => {
                             if let Ok(json) = serde_json::from_str::<Value>(&text) {
+                                
+                                // [X-RAY LOG] Print any response that is NOT a regular UTXO notification
+                                if json.get("utxosChangedNotification").is_none() {
+                                    log::info!("📩 [NODE RESPONSE] {}", text);
+                                }
+
                                 if let Some(notification) = json.get("utxosChangedNotification") {
-                                    
                                     // 1. Process Removed (Orphan detection)
                                     if let Some(removed) = notification.get("removed").and_then(|r| r.as_array()) {
                                         for utxo in removed {
                                             if let Some(tx_id) = utxo.get("outpoint").and_then(|o| o.get("transactionId")).and_then(|t| t.as_str()) {
                                                 if state.pending_alerts.remove(tx_id).is_some() {
-                                                    log::info!("[SILENT ORPHAN] TX {} suppressed within buffer.", tx_id);
+                                                    log::info!("🔕 [SILENT ORPHAN] TX {} suppressed within buffer.", tx_id);
                                                 }
                                                 if state.active_trackers.remove(tx_id).is_some() {
-                                                    log::info!("[ORPHAN] TX {} removed from DAG. Tracker removed.", tx_id);
+                                                    log::info!("🗑️ [ORPHAN] TX {} removed from DAG. Tracker removed.", tx_id);
                                                 }
                                             }
                                         }
@@ -101,7 +108,7 @@ pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
                                                 
                                                 if state.processed_txids.contains_key(&tx_id) { continue; }
 
-                                                log::info!("[PENDING] TX {} queued for 20 seconds buffer.", tx_id);
+                                                log::info!("⏳ [PENDING] TX {} queued for 20 seconds buffer.", tx_id);
                                                 
                                                 state.pending_alerts.insert(tx_id.clone(), PendingAlert { daa_score });
                                                 
@@ -117,14 +124,23 @@ pub async fn start_kaspa_listener(state: Arc<AppState>, bot: teloxide::Bot) {
                                 }
                             }
                         }
-                        Ok(tokio_tungstenite::tungstenite::Message::Close(_)) => { break; }
-                        Err(_) => { break; }
+                        Ok(tokio_tungstenite::tungstenite::Message::Close(c)) => { 
+                            log::warn!("⚠️ [NODE] Server explicitly closed the connection: {:?}", c);
+                            break; 
+                        }
+                        Ok(tokio_tungstenite::tungstenite::Message::Ping(p)) => {
+                            let _ = ws_stream.send(tokio_tungstenite::tungstenite::Message::Pong(p)).await;
+                        }
+                        Err(e) => { 
+                            log::error!("❌ [NODE] Connection dropped unexpectedly: {}", e);
+                            break; 
+                        }
                         _ => {}
                     }
                 }
             }
             Err(e) => {
-                log::error!("[NODE] Connection failed: {}. Retrying in 10s...", e);
+                log::error!("❌ [NODE] Initial Connection failed: {}. Retrying in 10s...", e);
                 sleep(Duration::from_secs(10)).await;
             }
         }
