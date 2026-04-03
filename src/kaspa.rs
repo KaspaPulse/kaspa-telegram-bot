@@ -70,6 +70,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
             Ok(req) => req,
             Err(_) => { tokio::time::sleep(Duration::from_secs(5)).await; continue; }
         };
+        // Force the node to speak JSON over the websocket
         if let Ok(header_val) = "wrpc-json".parse() { request.headers_mut().insert("sec-websocket-protocol", header_val); }
 
         match connect_async(request).await {
@@ -86,18 +87,21 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [THE ULTIMATE FIX]: Wrap the payload in the workflow-rpc "Request" envelope
+                                // [THE ULTIMATE FIX]: Send request using Standard JSON-RPC 2.0 format, but as a BINARY message
                                 let sub_req = json!({
-                                    "Request": {
-                                        "id": 1,
-                                        "method": "notifyUtxosChanged",
-                                        "params": {
-                                            "addresses": addrs
-                                        }
+                                    "jsonrpc": "2.0",
+                                    "id": 1,
+                                    "method": "notifyUtxosChanged",
+                                    "params": {
+                                        "addresses": addrs
                                     }
                                 });
                                 
-                                let _ = ws_stream.send(Message::Text(sub_req.to_string())).await;
+                                let payload = sub_req.to_string();
+                                // Send as Binary Array (Borsh compatible bypass) AND Text to cover all Node versions
+                                let _ = ws_stream.send(Message::Text(payload.clone())).await;
+                                let _ = ws_stream.send(Message::Binary(payload.into_bytes())).await;
+                                
                                 tracing::info!("🔄 [NODE] Requested Subscription for {} wallets.", current_count);
                             }
                         }
@@ -107,26 +111,30 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                         }
                         msg = ws_stream.next() => {
                             match msg {
-                                Some(Ok(Message::Text(text))) => {
-                                    if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
-                                        
+                                // Accept both Text and Binary responses from the node
+                                Some(Ok(Message::Text(text))) | Some(Ok(Message::Binary(text))) => {
+                                    let json_str = String::from_utf8_lossy(if let Message::Binary(b) = text { &b } else { text.to_text().unwrap().as_bytes() });
+                                    
+                                    if let Ok(parsed) = serde_json::from_str::<Value>(&json_str) {
                                         // 1. Process Live Reward Notifications
-                                        if let Some(notification) = parsed.get("Notification") {
-                                            if notification.get("method").and_then(|m| m.as_str()) == Some("utxosChangedNotification") {
-                                                if let Some(params) = notification.get("params") {
+                                        if let Some(method) = parsed.get("method").and_then(|m| m.as_str()) {
+                                            if method == "utxosChangedNotification" {
+                                                if let Some(params) = parsed.get("params") {
                                                     parse_utxos_and_queue(params, &state, &tx_event).await;
                                                 }
                                             }
                                         } 
                                         // 2. Process Subscription Acknowledgements
-                                        else if let Some(response) = parsed.get("Response") {
-                                            if let Some(err) = response.get("error") {
-                                                if !err.is_null() {
-                                                    tracing::error!("❌ [NODE RPC ERROR]: {}", err);
-                                                    last_wallet_count = 0; // Force retry
+                                        else if let Some(id) = parsed.get("id").and_then(|i| i.as_u64()) {
+                                            if id == 1 {
+                                                if let Some(err) = parsed.get("error") {
+                                                    if !err.is_null() {
+                                                        tracing::error!("❌ [NODE RPC ERROR]: {}", err);
+                                                        last_wallet_count = 0; // Force retry
+                                                    }
+                                                } else {
+                                                    tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
                                                 }
-                                            } else {
-                                                tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
                                             }
                                         }
                                         // 3. Catch General Errors
