@@ -1,33 +1,38 @@
-﻿use once_cell::sync::Lazy;
-use regex::Regex;
-
-static KASPA_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^kaspa:[a-z0-9]{61,65}$").unwrap());
-
-pub fn clean_and_validate_wallet(w: &str) -> Option<String> {
-    let cleaned = w.trim();
-    let formatted = if !cleaned.starts_with("kaspa:") {
-        format!("kaspa:{}", cleaned)
-    } else {
-        cleaned.to_string()
+pub fn clean_and_validate_wallet(address: &str) -> Option<String> {
+    let cleaned = address.trim().to_lowercase();
+    let target = if cleaned.starts_with("kaspa:") { 
+        cleaned 
+    } else { 
+        format!("kaspa:{}", cleaned) 
     };
 
-    if KASPA_REGEX.is_match(&formatted) {
-        Some(formatted)
-    } else {
-        None
+    let parts: Vec<&str> = target.split(':').collect();
+    if parts.len() != 2 || parts[0] != "kaspa" { 
+        return None; 
     }
+
+    let payload = parts[1];
+    
+    // Kaspa payloads are exactly 61 chars (P2PKH) or 63 chars (P2SH)
+    if payload.len() != 61 && payload.len() != 63 { 
+        return None; 
+    }
+
+    // Strict Bech32 alphabet check (Kaspa deliberately excludes 1, b, i, o)
+    let bech32_alphabet = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    if !payload.chars().all(|c| bech32_alphabet.contains(c)) { 
+        return None; 
+    }
+
+    Some(target)
 }
 
 pub fn format_short_wallet(address: &str) -> String {
-    if address.is_empty() {
-        return "N/A".to_string();
-    }
-
+    if address.is_empty() { return "N/A".to_string(); }
     let parts: Vec<&str> = address.split(':').collect();
     if parts.len() == 2 {
         let prefix = parts[0];
         let payload = parts[1];
-
         if payload.len() > 12 {
             let start = &payload[0..3];
             let end = &payload[payload.len() - 6..];
@@ -38,79 +43,17 @@ pub fn format_short_wallet(address: &str) -> String {
 }
 
 pub fn format_hashrate(val: f64) -> String {
-    if val.is_nan() || val == 0.0 {
-        return "0.00 TH/s".to_string();
-    }
-    if val < 1_000.0 {
-        format!("{:.2} TH/s", val)
-    } else if val < 1_000_000.0 {
-        format!("{:.2} PH/s", val / 1_000.0)
-    } else {
-        format!("{:.2} EH/s", val / 1_000_000.0)
-    }
+    if val.is_nan() || val == 0.0 { return "0.00 TH/s".to_string(); }
+    if val < 1_000.0 { format!("{:.2} TH/s", val) } 
+    else if val < 1_000_000.0 { format!("{:.2} PH/s", val / 1_000.0) } 
+    else { format!("{:.2} EH/s", val / 1_000_000.0) }
 }
 
 #[allow(dead_code)]
 pub fn format_difficulty(val: f64) -> String {
-    if val == 0.0 {
-        return "0.00".to_string();
-    }
-    if val >= 1e15 {
-        format!("{:.2} P", val / 1e15)
-    } else if val >= 1e12 {
-        format!("{:.2} T", val / 1e12)
-    } else if val >= 1e9 {
-        format!("{:.2} G", val / 1e9)
-    } else {
-        // Simple 2 decimal formatting for lower numbers
-        format!("{:.2}", val)
-    }
-}
-
-// [SECURITY] OOM DoS Prevention: Bounded Memory JSON Fetcher
-pub async fn fetch_json_safe(url: &str, max_bytes: usize) -> Option<serde_json::Value> {
-    if let Ok(mut resp) = reqwest::get(url).await {
-        let mut payload = Vec::new();
-        
-        // Read the incoming stream in tiny chunks to strictly monitor RAM usage
-        while let Ok(Some(chunk)) = resp.chunk().await {
-            payload.extend_from_slice(&chunk);
-            
-            // Instantly sever the connection if the payload exceeds our strict limit
-            if payload.len() > max_bytes {
-                log::warn!("[SECURITY] Bounded Fetcher: Payload from {} exceeded {} bytes. Dropped connection to protect RAM.", url, max_bytes);
-                return None;
-            }
-        }
-        
-        // Only parse JSON if the entire payload was securely within limits
-        if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&payload) {
-            return Some(json);
-        }
-    }
-    None
-}
-// [SECURITY] HTML Sanitizer for Telegram ParseMode
-pub fn sanitize_html(input: &str) -> String {
-    input.replace("&", "&amp;")
-         .replace("<", "&lt;")
-         .replace(">", "&gt;")
-         .replace("\"", "&quot;")
-         .replace("'", "&#x27;")
-}
-
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
-
-pub fn main_keyboard() -> InlineKeyboardMarkup {
-    let buttons = vec![
-        vec![
-            InlineKeyboardButton::callback("📊 Balances", "balances"),
-            InlineKeyboardButton::callback("🌍 Network", "network"),
-        ],
-        vec![
-            InlineKeyboardButton::callback("🏦 Supply", "supply"),
-            InlineKeyboardButton::callback("📈 Market", "market"),
-        ],
-    ];
-    InlineKeyboardMarkup::new(buttons)
+    if val == 0.0 { return "0.00".to_string(); }
+    if val >= 1_000_000_000_000_000.0 { format!("{:.2} P", val / 1_000_000_000_000_000.0) }
+    else if val >= 1_000_000_000_000.0 { format!("{:.2} T", val / 1_000_000_000_000.0) }
+    else if val >= 1_000_000_000.0 { format!("{:.2} G", val / 1_000_000_000.0) }
+    else { format!("{:.2}", val) }
 }
