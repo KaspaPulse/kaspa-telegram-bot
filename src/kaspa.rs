@@ -86,11 +86,14 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                 last_wallet_count = current_count;
                                 let addrs: Vec<String> = state.monitored_wallets.iter().map(|kv| kv.key().clone()).collect();
                                 
-                                // [CRITICAL FIX]: Added "id": 1 to prevent Node from dropping the connection!
+                                // [THE ULTIMATE FIX]: Wrap the payload in the workflow-rpc "Request" envelope
                                 let sub_req = json!({
-                                    "id": 1, 
-                                    "notifyUtxosChangedRequest": {
-                                        "addresses": addrs
+                                    "Request": {
+                                        "id": 1,
+                                        "method": "notifyUtxosChanged",
+                                        "params": {
+                                            "addresses": addrs
+                                        }
                                     }
                                 });
                                 
@@ -108,11 +111,15 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                     if let Ok(parsed) = serde_json::from_str::<Value>(&text) {
                                         
                                         // 1. Process Live Reward Notifications
-                                        if let Some(notification) = parsed.get("utxosChangedNotification") {
-                                            parse_utxos_and_queue(notification, &state, &tx_event).await;
+                                        if let Some(notification) = parsed.get("Notification") {
+                                            if notification.get("method").and_then(|m| m.as_str()) == Some("utxosChangedNotification") {
+                                                if let Some(params) = notification.get("params") {
+                                                    parse_utxos_and_queue(params, &state, &tx_event).await;
+                                                }
+                                            }
                                         } 
                                         // 2. Process Subscription Acknowledgements
-                                        else if let Some(response) = parsed.get("notifyUtxosChangedResponse") {
+                                        else if let Some(response) = parsed.get("Response") {
                                             if let Some(err) = response.get("error") {
                                                 if !err.is_null() {
                                                     tracing::error!("❌ [NODE RPC ERROR]: {}", err);
@@ -122,7 +129,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot, api: Arc<ApiMana
                                                 tracing::info!("✅ [NODE ACK] UTXO Subscription Active!");
                                             }
                                         }
-                                        // 3. General Errors
+                                        // 3. Catch General Errors
                                         else if let Some(err) = parsed.get("error") {
                                             tracing::error!("❌ [NODE ERROR]: {}", err);
                                         }
