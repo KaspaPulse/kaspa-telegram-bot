@@ -1,4 +1,4 @@
-﻿#![allow(deprecated, unused_variables)]
+#![allow(deprecated, unused_variables)]
 use chrono::Utc;
 use teloxide::types::ParseMode;
 use crate::utils::helpers::format_short_wallet;
@@ -196,7 +196,7 @@ async fn handle_utxos_changed(
                     live_bal = wallet.last_balance + exact_reward;
                     wallet.last_balance = live_bal;
                 }
-                state_clone.save_wallets().await;
+                state_clone.sync_wallet_to_db(&address_clone).await;
                 let dt_str = format!("{} UTC", Utc::now().format("%Y-%m-%d %H:%M:%S"));
                 let short_wallet = format_short_wallet(&address_clone);
                 let build_msg = |b: &str, a: &str, m: &str| -> String {
@@ -242,3 +242,4 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
+

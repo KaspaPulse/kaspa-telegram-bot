@@ -1,4 +1,4 @@
-﻿use teloxide::prelude::*;
+use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
 use std::sync::Arc;
 use crate::state::AppState;

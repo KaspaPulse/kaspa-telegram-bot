@@ -1,4 +1,4 @@
-﻿pub mod dag_buffer;
+pub mod dag_buffer;
 use dotenvy::dotenv;
 use secrecy::{ExposeSecret, SecretString};
 use std::sync::Arc;
@@ -38,7 +38,14 @@ async fn main() {
 
     // Global Graceful Shutdown Token
     let shutdown_token = CancellationToken::new();
-    let state = Arc::new(AppState::new(shutdown_token.clone()));
+        // [ENTERPRISE FIX] Establish Async Database Connection Pool
+    let db_pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect("sqlite:kaspa_bot.db?mode=rwc")
+        .await
+        .expect("❌ FATAL ERROR: Failed to create or connect to SQLite database");
+        
+    let state = Arc::new(AppState::new(shutdown_token.clone(), db_pool).await);
     
 
     // Hook OS Signals (Ctrl+C) to the Cancellation Token
@@ -64,3 +71,4 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state).await;
 }
+
