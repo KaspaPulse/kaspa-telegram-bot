@@ -18,7 +18,7 @@ async fn main() {
     // 1. Load Environment Variables
     dotenv().ok();
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
-    log::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
+    tracing::info!("🚀 Starting Kaspa Rust Bot Engine (Enterprise Edition)...");
 
     // [ENTERPRISE FIX] Secure Secret Management
     // Read the token and immediately wrap it in a memory-safe Secret String
@@ -27,7 +27,7 @@ async fn main() {
         .expect("❌ FATAL ERROR: BOT_TOKEN is missing in .env file");
         
     let secret_token = Secret::new(raw_token);
-    log::info!("🔐 Bot Token securely loaded into Zeroized Memory.");
+    tracing::info!("🔐 Bot Token securely loaded into Zeroized Memory.");
 
     // [ENTERPRISE FIX] Global Graceful Shutdown Token
     let shutdown_token = CancellationToken::new();
@@ -38,7 +38,7 @@ async fn main() {
     let token_clone = shutdown_token.clone();
     tokio::spawn(async move {
         if let Ok(_) = tokio::signal::ctrl_c().await {
-            log::warn!("🛑 [SYSTEM] Received SIGINT (Ctrl+C). Initiating Graceful Shutdown...");
+            tracing::warn!("🛑 [SYSTEM] Received SIGINT (Ctrl+C). Initiating Graceful Shutdown...");
             token_clone.cancel();
         }
     });
@@ -57,3 +57,4 @@ async fn main() {
     // Start the Telegram Polling Engine
     bot::start_telegram_bot(bot_client, state, api).await;
 }
+

@@ -64,12 +64,12 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
             tokio::time::sleep(Duration::from_secs(5)).await;
             continue;
         }
-        log::info!("[NODE] Connecting to Node02 wRPC at {}...", ws_url);
+        tracing::info!("[NODE] Connecting to Node02 wRPC at {}...", ws_url);
 
         let mut request = match ws_url.clone().into_client_request() {
             Ok(req) => req,
             Err(e) => {
-                log::error!("❌ [NODE] Invalid URL: {}", e);
+                tracing::error!("❌ [NODE] Invalid URL: {}", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
                 continue;
             }
@@ -80,7 +80,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
 
         match connect_async(request).await {
             Ok((mut ws_stream, _)) => {
-                log::info!("✅ [NODE] Connected! Handshaking...");
+                tracing::info!("✅ [NODE] Connected! Handshaking...");
                 let addresses: Vec<String> = state
                     .monitored_wallets
                     .iter()
@@ -115,7 +115,7 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                                         }
                                     }
                                 } else if let Some(result) = parsed.get("result") {
-                                    log::info!(
+                                    tracing::info!(
                                         "📥 [NODE ACK] Subscription Successful: {:?}",
                                         result
                                     );
@@ -123,11 +123,11 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                             }
                         }
                         Ok(Message::Close(c)) => {
-                            log::warn!("⚠️ [NODE] Closed: {:?}", c);
+                            tracing::warn!("⚠️ [NODE] Closed: {:?}", c);
                             break;
                         }
                         Err(e) => {
-                            log::error!("❌ [NODE] WS Error: {}", e);
+                            tracing::error!("❌ [NODE] WS Error: {}", e);
                             break;
                         }
                         _ => {}
@@ -135,11 +135,11 @@ pub async fn start_kaspa_engine(state: Arc<AppState>, bot: Bot) {
                 }
             }
             Err(e) => {
-                log::error!("❌ [NODE FATAL] Fail: {}", e);
+                tracing::error!("❌ [NODE FATAL] Fail: {}", e);
             }
         }
         if state.shutdown_token.is_cancelled() { return; }
-        log::warn!("🔄 Reconnecting in 5s...");
+        tracing::warn!("🔄 Reconnecting in 5s...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 }
@@ -240,6 +240,7 @@ fn extract_daa_score(entry: &Value) -> Option<u64> {
         .and_then(|u| u.get("blockDaaScore"))
         .and_then(|v| v.as_u64())
 }
+
 
 
 

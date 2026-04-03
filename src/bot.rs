@@ -55,7 +55,7 @@ pub async fn start_telegram_bot(bot: Bot, state: Arc<AppState>, api: Arc<ApiMana
         .branch(Update::filter_message().endpoint(handle_plain_text))
         .branch(Update::filter_callback_query().endpoint(handle_cb));
 
-    log::info!("[SYSTEM] Enterprise Admin Engine Active.");
+    tracing::info!("[SYSTEM] Enterprise Admin Engine Active.");
     Dispatcher::builder(bot, handler).dependencies(dptree::deps![state, api]).enable_ctrlc_handler().build().dispatch().await;
 }
 
@@ -111,6 +111,7 @@ async fn handle_plain_text(bot: Bot, msg: Message, state: Arc<AppState>) -> Resp
     Ok(())
 }
 
+#[tracing::instrument(skip(bot, state, api))]
 async fn handle_cmd(bot: Bot, msg: Message, cmd: Command, state: Arc<AppState>, api: Arc<ApiManager>) -> ResponseResult<()> {
     let cid = msg.chat.id.0;
     
@@ -258,6 +259,7 @@ async fn handle_cb(bot: Bot, q: CallbackQuery, state: Arc<AppState>, api: Arc<Ap
     }
     Ok(())
 }
+
 
 
 
