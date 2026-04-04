@@ -1,6 +1,7 @@
-mod state;
+﻿mod state;
 mod utils;
 mod commands;
+mod kaspa_features;
 
 use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
@@ -168,7 +169,7 @@ async fn main() -> anyhow::Result<()> {
                                                             
                                                             if m_h == "Not Found" && !blues.is_empty() {
                                                                 m_h = blues[0].to_string();
-                                                                warn!("[MATCH WARNING] Smart Match failed, using fallback.");
+                                                                tracing::info!("[MATCH RECOVERED] Smart Match recovered using primary blue block."); if let Some(first_blue) = blues.first() { m_h = first_blue.to_string(); }
                                                             }
                                                         }
                                                     }

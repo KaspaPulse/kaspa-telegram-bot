@@ -9,7 +9,7 @@ chrono = "0.4.44"
 dashmap = "6.1.0"
 dotenvy = "0.15.7"
 futures = "0.3.32"
-moka = { version = "0.12.15", features = ["future"] }
+moka = { version = "0.12.15", features = ["future", "sync"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 teloxide = { version = "0.17.0", features = ["macros", "rustls"] }
@@ -28,3 +28,4 @@ kaspa-rpc-core = "0.15.0"
 kaspa-consensus-core = "0.15.0"
 kaspa-addresses = "0.15.0"
 kaspa-hashes = "0.15.0"
+log = "0.4.29"

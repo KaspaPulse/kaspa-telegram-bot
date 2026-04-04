@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+﻿use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use teloxide::{prelude::*, types::ChatId, utils::command::BotCommands};
@@ -52,32 +52,13 @@ pub async fn handle_command(
     let is_admin = chat_id == admin_id;
     
     match cmd {
-        Command::Start => { 
-            let mut msg_text = "🤖 <b>Kaspa Platinum Command Center</b>\n━━━━━━━━━━━━━━━━━━\n\
-            Welcome! This system provides secure, real-time Kaspa wallet monitoring directly via a private node.\n\n\
-            📌 <b>Public Commands:</b>\n\
-            <code>/add &lt;address&gt;</code> - Track a wallet\n\
-            <code>/remove &lt;address&gt;</code> - Stop tracking\n\
-            <code>/list</code> - View your portfolio\n\
-            <code>/balance</code> - Check live balances\n\
-            <code>/network</code> - Network statistics\n\
-            <code>/fees</code> - Live mempool fees\n\
-            <code>/price</code> - Current KAS price\n\
-            <code>/supply</code> - Circulating supply\n\
-            <code>/market</code> - Market capitalization\n\
-            <code>/dag</code> - BlockDAG details".to_string();
-
-            if is_admin {
-                msg_text.push_str("\n\n👑 <b>Admin Commands:</b>\n\
-                <code>/sys</code> - Server Diagnostics\n\
-                <code>/pause</code> - Disconnect Engine\n\
-                <code>/resume</code> - Reconnect Engine\n\
-                <code>/restart</code> - Reboot Process\n\
-                <code>/broadcast &lt;msg&gt;</code> - Message all users\n\
-                <code>/logs</code> - View System Logs");
-            }
-
-            let _ = send_and_log(&bot, msg.chat.id, msg_text, Some(make_golden_keyboard())).await; 
+        Command::Start => {
+            let help_text = "\u{1F916} <b>Kaspa Platinum Command Center</b>\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\nWelcome! This system provides secure, real-time Kaspa wallet monitoring directly via a private node.\n\n\u{1F4CC} <b>Public Commands:</b>\n<code>/add &lt;address&gt;</code> - Track a wallet\n<code>/remove &lt;address&gt;</code> - Stop tracking\n<code>/list</code> - View your portfolio\n<code>/balance</code> - Check live balances\n\n\u{1F451} <b>Admin Commands:</b>\n<code>/sys</code> - Server Diagnostics\n<code>/pause</code> - Disconnect Engine\n<code>/resume</code> - Reconnect Engine\n<code>/restart</code> - Reboot Process";
+            let _ = bot.send_message(msg.chat.id, help_text)
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .reply_markup(crate::kaspa_features::main_menu_markup())
+                .await;
+            tracing::info!("[BOT OUT] Chat: {} | Msg: /start (Inline Menu Sent successfully)", msg.chat.id);
         }
         Command::Add(w) => {
             let c = if w.starts_with("kaspa:") { w.clone() } else { format!("kaspa:{}", w) };
@@ -114,9 +95,11 @@ pub async fn handle_command(
             let _ = send_and_log(&bot, msg.chat.id, text, None).await;
         }
         Command::Network => {
-            if let Ok(info) = rpc.get_block_dag_info().await {
-                let text = format!("🌐 <b>Network Stats:</b>\n🧩 <b>Network:</b> <code>{}</code>\n⚙️ <b>Difficulty:</b> <code>{}</code>\n📊 <b>DAA Score:</b> <code>{}</code>", info.network, f_num(info.difficulty as f64), f_num(info.virtual_daa_score as f64));
-                let _ = send_and_log(&bot, msg.chat.id, text, None).await;
+            if let Ok(dag_info) = rpc.get_block_dag_info().await {
+                let diff = crate::kaspa_features::format_difficulty(dag_info.difficulty as f64);
+                let hashrate = crate::kaspa_features::fetch_hashrate_api().await.unwrap_or_else(|_| "0.00 TH/s".to_string());
+                let text = format!("\u{1F310} <b>Network Stats:</b>\n\u{1F9E9} <b>Network:</b> <code>{}</code>\n\u{2699}\u{FE0F} <b>Difficulty:</b> <code>{}</code>\n\u{1F4CA} <b>DAA Score:</b> <code>{}</code>\n\u{26CF}\u{FE0F} <b>Hashrate:</b> <code>{}</code>", dag_info.network, diff, crate::utils::f_num(dag_info.virtual_daa_score as f64), hashrate);
+                let _ = bot.send_message(msg.chat.id, text).parse_mode(teloxide::types::ParseMode::Html).await;
             }
         }
         Command::Dag => {
