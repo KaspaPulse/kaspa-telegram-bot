@@ -3,8 +3,6 @@ name = "kaspa-rust-bot"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = "1.0.102"
 chrono = "0.4.44"
@@ -18,15 +16,15 @@ teloxide = { version = "0.17.0", features = ["macros", "rustls"] }
 thiserror = "2.0.18"
 tokio = { version = "1.51.0", features = ["full"] }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-
-# Kaspa Native Core & wRPC (Golden Standard Git Integration)
-kaspa-wrpc-client = { git = "https://github.com/kaspanet/rusty-kaspa.git" }
-kaspa-rpc-core = { git = "https://github.com/kaspanet/rusty-kaspa.git" }
-kaspa-consensus-core = { git = "https://github.com/kaspanet/rusty-kaspa.git" }
-kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa.git" }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 reqwest = { version = "0.13.2", features = ["json", "rustls"] }
 sysinfo = "0.38.4"
 regex = "1.12.3"
 tracing-appender = "0.2.4"
-kaspa-hashes = { git = "https://github.com/kaspanet/rusty-kaspa.git", version = "1.1.0" }
+rev_lines = "0.3.0"
+
+kaspa-wrpc-client = "0.15.0"
+kaspa-rpc-core = "0.15.0"
+kaspa-consensus-core = "0.15.0"
+kaspa-addresses = "0.15.0"
+kaspa-hashes = "0.15.0"

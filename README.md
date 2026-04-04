@@ -28,7 +28,7 @@ Rigorously tested in live solo mining environments to ensure absolute stability,
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/KaspaPulse/kaspa-rust-bot.git
-   cd kaspa-telegram-bot
+   cd kaspa-rust-bot
    ```
 
 2. **Configure your environment:**

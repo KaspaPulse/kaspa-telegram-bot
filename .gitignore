@@ -11,3 +11,4 @@ trackers.json
 # Temporary Files
 .restart_flag
 **/*.rs.bk
+*.log
