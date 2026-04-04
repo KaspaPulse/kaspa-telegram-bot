@@ -46,6 +46,7 @@ pub async fn handle_command(
     monitoring: Arc<AtomicBool>, 
     admin_id: i64
 ) -> anyhow::Result<()> {
+    if crate::utils::is_spam(msg.chat.id.0) { return Ok(()); }
     let chat_id = msg.chat.id.0;
     info!("[CMD IN] User: {} | Msg: {}", chat_id, msg.text().unwrap_or(""));
     let is_admin = chat_id == admin_id;
@@ -216,3 +217,4 @@ pub async fn handle_command(
     };
     Ok(())
 }
+
