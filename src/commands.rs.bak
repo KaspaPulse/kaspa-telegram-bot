@@ -8,14 +8,14 @@ use kaspa_addresses::Address;
 use tokio::time::{sleep, Duration};
 use sysinfo::System;
 use regex::Regex;
- 
+use tracing::{info, error}; 
 use rev_lines::RevLines;
 use std::io::BufReader;
 
 use crate::state::{SharedState, save_state};
 use crate::utils::{f_num, make_golden_keyboard, send_and_log, format_short_wallet};
 
-#[derive(BotCommands, Clone, std::fmt::Debug)]
+#[derive(BotCommands, Clone)]
 #[command(rename_rule = "lowercase", description = "Kaspa Node Bot Commands:")]
 pub enum Command {
     #[command(description = "Start the bot and show help.")] Start,
@@ -35,22 +35,30 @@ pub enum Command {
     #[command(description = "Admin Command")] Restart,
     #[command(description = "Admin Command")] Broadcast(String),
     #[command(description = "Admin Command")] Logs,
-    #[command(description = "Support the Developer")] Donate,
 }
 
 pub async fn handle_command(
-    bot: Bot, msg: Message, cmd: Command, state: SharedState, 
-    rpc: Arc<KaspaRpcClient>, monitoring: Arc<AtomicBool>, admin_id: i64
+    bot: Bot, 
+    msg: Message, 
+    cmd: Command, 
+    state: SharedState, 
+    rpc: Arc<KaspaRpcClient>, 
+    monitoring: Arc<AtomicBool>, 
+    admin_id: i64
 ) -> anyhow::Result<()> {
     if crate::utils::is_spam(msg.chat.id.0) { return Ok(()); }
     let chat_id = msg.chat.id.0;
-    tracing::info!("[CMD EXEC] User: {} | Action: {:?}", chat_id, cmd);
+    info!("[CMD IN] User: {} | Msg: {}", chat_id, msg.text().unwrap_or(""));
     let is_admin = chat_id == admin_id;
     
     match cmd {
         Command::Start => {
-            let help_text = "🤖 <b>Kaspa Platinum Command Center</b>\n━━━━━━━━━━━━━━━━━━\nWelcome! This system provides secure, real-time Kaspa wallet monitoring directly via a private node.\n\n📌 <b>Public Commands:</b>\n<code>/add &lt;address&gt;</code> - Track a wallet\n<code>/remove &lt;address&gt;</code> - Stop tracking\n<code>/list</code> - View your portfolio\n<code>/balance</code> - Check live balances\n\n👑 <b>Admin Commands:</b>\n<code>/sys</code> - Server Diagnostics\n<code>/pause</code> - Disconnect Engine\n<code>/resume</code> - Reconnect Engine\n<code>/restart</code> - Reboot Process";
-            let _ = bot.send_message(msg.chat.id, help_text).parse_mode(teloxide::types::ParseMode::Html).reply_markup(crate::kaspa_features::main_menu_markup()).await;
+            let help_text = "\u{1F916} <b>Kaspa Platinum Command Center</b>\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\nWelcome! This system provides secure, real-time Kaspa wallet monitoring directly via a private node.\n\n\u{1F4CC} <b>Public Commands:</b>\n<code>/add &lt;address&gt;</code> - Track a wallet\n<code>/remove &lt;address&gt;</code> - Stop tracking\n<code>/list</code> - View your portfolio\n<code>/balance</code> - Check live balances\n\n\u{1F451} <b>Admin Commands:</b>\n<code>/sys</code> - Server Diagnostics\n<code>/pause</code> - Disconnect Engine\n<code>/resume</code> - Reconnect Engine\n<code>/restart</code> - Reboot Process";
+            let _ = bot.send_message(msg.chat.id, help_text)
+                .parse_mode(teloxide::types::ParseMode::Html)
+                .reply_markup(crate::kaspa_features::main_menu_markup())
+                .await;
+            tracing::info!("[BOT OUT] Chat: {} | Msg: /start (Inline Menu Sent successfully)", msg.chat.id);
         }
         Command::Add(w) => {
             let c = if w.starts_with("kaspa:") { w.clone() } else { format!("kaspa:{}", w) };
@@ -58,7 +66,9 @@ pub async fn handle_command(
                 state.entry(c.clone()).or_insert_with(HashSet::new).insert(chat_id);
                 save_state(&state).await; 
                 let _ = send_and_log(&bot, msg.chat.id, format!("✅ <b>Tracking Enabled:</b>\n<code>{}</code>", c), Some(make_golden_keyboard())).await;
-            } else { let _ = send_and_log(&bot, msg.chat.id, "❌ <b>Invalid Format!</b>\nPlease provide a valid Kaspa address.".to_string(), None).await; }
+            } else { 
+                let _ = send_and_log(&bot, msg.chat.id, "❌ <b>Invalid Format!</b>\nPlease provide a valid Kaspa address.".to_string(), None).await; 
+            }
         }
         Command::Remove(w) => {
             let c = if w.starts_with("kaspa:") { w.clone() } else { format!("kaspa:{}", w) };
@@ -88,7 +98,7 @@ pub async fn handle_command(
             if let Ok(dag_info) = rpc.get_block_dag_info().await {
                 let diff = crate::kaspa_features::format_difficulty(dag_info.difficulty as f64);
                 let hashrate = crate::kaspa_features::fetch_hashrate_api().await.unwrap_or_else(|_| "0.00 TH/s".to_string());
-                let text = format!("🌐 <b>Network Stats:</b>\n🧩 <b>Network:</b> <code>{}</code>\n⚙️ <b>Difficulty:</b> <code>{}</code>\n📊 <b>DAA Score:</b> <code>{}</code>\n⛏️ <b>Hashrate:</b> <code>{}</code>", dag_info.network, diff, crate::utils::f_num(dag_info.virtual_daa_score as f64), hashrate);
+                let text = format!("\u{1F310} <b>Network Stats:</b>\n\u{1F9E9} <b>Network:</b> <code>{}</code>\n\u{2699}\u{FE0F} <b>Difficulty:</b> <code>{}</code>\n\u{1F4CA} <b>DAA Score:</b> <code>{}</code>\n\u{26CF}\u{FE0F} <b>Hashrate:</b> <code>{}</code>", dag_info.network, diff, crate::utils::f_num(dag_info.virtual_daa_score as f64), hashrate);
                 let _ = bot.send_message(msg.chat.id, text).parse_mode(teloxide::types::ParseMode::Html).await;
             }
         }
@@ -135,17 +145,38 @@ pub async fn handle_command(
                 let _ = send_and_log(&bot, msg.chat.id, text, None).await;
             }
         }
-        Command::Pause => { if is_admin { monitoring.store(false, Ordering::Relaxed); let _ = send_and_log(&bot, msg.chat.id, "⏸️ <b>Paused.</b>".to_string(), None).await; } }
-        Command::Resume => { if is_admin { monitoring.store(true, Ordering::Relaxed); let _ = send_and_log(&bot, msg.chat.id, "▶️ <b>Running.</b>".to_string(), None).await; } }
-        Command::Restart => { if is_admin { let _ = send_and_log(&bot, msg.chat.id, "🔄 <b>Restarting safely...</b>".to_string(), None).await; save_state(&state).await; std::process::exit(0); } }
+        Command::Pause => { 
+            if is_admin { 
+                monitoring.store(false, Ordering::Relaxed); 
+                let _ = send_and_log(&bot, msg.chat.id, "⏸️ <b>Paused.</b>".to_string(), None).await; 
+            } 
+        }
+        Command::Resume => { 
+            if is_admin { 
+                monitoring.store(true, Ordering::Relaxed); 
+                let _ = send_and_log(&bot, msg.chat.id, "▶️ <b>Running.</b>".to_string(), None).await; 
+            } 
+        }
+        Command::Restart => { 
+            if is_admin { 
+                let _ = send_and_log(&bot, msg.chat.id, "🔄 <b>Restarting safely...</b>".to_string(), None).await; 
+                save_state(&state).await; 
+                std::process::exit(0); 
+            } 
+        }
         Command::Broadcast(m) => {
             if is_admin {
                 let users: HashSet<i64> = state.iter().flat_map(|e| e.value().clone()).collect();
                 let mut success_count = 0;
                 let msg_text = format!("📢 <b>Admin Broadcast:</b>\n\n{}", m);
+                
                 for u in users { 
                     match bot.send_message(ChatId(u), &msg_text).parse_mode(teloxide::types::ParseMode::Html).await {
-                        Ok(_) => success_count += 1, Err(_) => { for mut entry in state.iter_mut() { entry.value_mut().remove(&u); } }
+                        Ok(_) => success_count += 1,
+                        Err(e) => {
+                            error!("[BROADCAST ERROR] Failed to send to {}: {}", u, e);
+                            for mut entry in state.iter_mut() { entry.value_mut().remove(&u); }
+                        }
                     }
                     sleep(Duration::from_millis(50)).await; 
                 }
@@ -159,45 +190,14 @@ pub async fn handle_command(
                     let rev_lines = RevLines::new(BufReader::new(file));
                     let mut lines: Vec<String> = rev_lines.take(20).filter_map(|r| r.ok()).collect();
                     lines.reverse(); 
-                    let _ = send_and_log(&bot, msg.chat.id, format!("📜 <b>System Logs:</b>\n<pre>{}</pre>", lines.join("\n")), None).await;
-                } else { let _ = send_and_log(&bot, msg.chat.id, "❌ <b>Could not read log file.</b>".to_string(), None).await; }
+                    let last = lines.join("\n");
+                    let _ = send_and_log(&bot, msg.chat.id, format!("📜 <b>System Logs:</b>\n<pre>{}</pre>", last), None).await;
+                } else {
+                    let _ = send_and_log(&bot, msg.chat.id, "❌ <b>Could not read log file.</b>".to_string(), None).await;
+                }
             }
-        }
-        Command::Donate => {
-            let _ = crate::utils::send_and_log(&bot, msg.chat.id, "❤️ <b>Support & Donate</b>\nIf you find this bot valuable, consider supporting its development!\n\n<b>Kaspa (KAS) Address:</b>\n<code>kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g</code>".to_string(), None).await;
         }
     };
     Ok(())
 }
-
-pub async fn handle_callback(
-    bot: Bot, q: teloxide::types::CallbackQuery, state: SharedState,
-    rpc: Arc<KaspaRpcClient>, monitoring: Arc<AtomicBool>, admin_id: i64
-) -> anyhow::Result<()> {
-    if let Some(data) = q.data.clone() {
-        tracing::info!("[BTN CLICK] User: {} | Data: {}", q.from.id.0, data);
-        if let Some(msg) = q.regular_message() {
-            let cmd = match data.as_str() {
-                "cmd_balance" => Some(Command::Balance),
-                "cmd_list" => Some(Command::List),
-                "cmd_price" => Some(Command::Price),
-                "cmd_market" => Some(Command::Market),
-                "cmd_network" => Some(Command::Network),
-                "cmd_fees" => Some(Command::Fees),
-                "cmd_supply" => Some(Command::Supply),
-                "cmd_dag" => Some(Command::Dag),
-                "cmd_donate" => Some(Command::Donate),
-                _ => None,
-            };
-            if let Some(c) = cmd {
-                let _ = handle_command(bot.clone(), msg.clone(), c, state, rpc, monitoring, admin_id).await;
-            }
-        }
-    }
-    let _ = bot.answer_callback_query(q.id).await;
-    Ok(())
-}
-
-
-
 

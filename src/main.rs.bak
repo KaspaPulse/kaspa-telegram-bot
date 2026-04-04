@@ -8,9 +8,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use dashmap::DashMap;
 use teloxide::prelude::*;
-use teloxide::dispatching::{UpdateFilterExt, Dispatcher};
-use teloxide::dptree;
-use teloxide::types::Update;
 use teloxide::RequestError;
 use kaspa_wrpc_client::{KaspaRpcClient, WrpcEncoding};
 use kaspa_consensus_core::network::NetworkId;
@@ -122,7 +119,7 @@ async fn main() -> anyhow::Result<()> {
                             info!("[REWARD] TXID  : {}", tx_id);
                             info!("--------------------------------------------------");
 
-                            let initial_msg = format!("\u{26A1} <b>Native Node Reward!</b> \u{1F48E}\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.8} KAS</code>\n<b>Live Balance:</b> <code>{:.8} KAS</code>\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\n<b>TXID:</b> {}\n<b>Mined Block:</b> \u{23F3} <code>Searching...</code>\n<b>TX Block:</b> \u{23F3} <code>Indexing...</code>\n<b>Accepting Block:</b> \u{23F3} <code>Indexing...</code>\n<b>DAA Score:</b> <code>{}</code>", time_str, wallet, short_wallet, diff, live_bal, format_hash(&tx_id, "transactions"), daa_score);
+                            let initial_msg = format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.8} KAS</code>\n<b>Live Balance:</b> <code>{:.8} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> {}\n<b>Mined Block:</b> ⏳ <code>Searching...</code>\n<b>TX Block:</b> ⏳ <code>Indexing...</code>\n<b>Accepting Block:</b> ⏳ <code>Indexing...</code>\n<b>DAA Score:</b> <code>{}</code>", time_str, wallet, short_wallet, diff, live_bal, format_hash(&tx_id, "transactions"), daa_score);
                             let mut s_ids = Vec::new();
                             for s in subs.clone() { 
                                 if let Ok(m) = alert_bot.send_message(ChatId(s), &initial_msg).parse_mode(teloxide::types::ParseMode::Html).await { 
@@ -145,24 +142,34 @@ async fn main() -> anyhow::Result<()> {
                                             a_h = j["accepting_block_hash"].as_str().unwrap_or("Not Found").to_string();
                                             
                                             if b_h != "Not Found" {
-                                                let mut target_index = 0;
-                                                if let Some(outputs) = j["outputs"].as_array() {
-                                                    for (i, out) in outputs.iter().enumerate() {
-                                                        if out["script_public_key_address"].as_str().unwrap_or("") == w_cl {
-                                                            target_index = i;
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-                                                
                                                 if let Ok(h) = Hash::from_str(&b_h) {
                                                     if let Ok(bl) = rpc_cl.get_block(h, false).await {
                                                         if let Some(v) = bl.verbose_data {
                                                             let blues = v.merge_set_blues_hashes;
-                                                            if !blues.is_empty() {
-                                                                let safe_idx = if target_index < blues.len() { target_index } else { 0 };
-                                                                m_h = blues[safe_idx].to_string();
-                                                                tracing::info!("[FAST MATCH] Mined Block mapped by index {}: {}", safe_idx, m_h);
+                                                            info!("[DEBUG] Node returned {} blue blocks. Starting Smart Match...", blues.len());
+                                                            
+                                                            for blue_hash in &blues {
+                                                                if let Ok(full_b) = rpc_cl.get_block(*blue_hash, true).await {
+                                                                    for tx in full_b.transactions {
+                                                                        for out in tx.outputs {
+                                                                            // Using robust explicit string conversion for Address matching
+                                                                            if let Some(vd) = &out.verbose_data {
+                                                                                if vd.script_public_key_address.to_string() == w_cl {
+                                                                                    m_h = blue_hash.to_string();
+                                                                                    info!("[MATCH SUCCESS] Found Mined Block: {}", m_h);
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                        if m_h != "Not Found" { break; }
+                                                                    }
+                                                                }
+                                                                if m_h != "Not Found" { break; }
+                                                            }
+                                                            
+                                                            if m_h == "Not Found" && !blues.is_empty() {
+                                                                m_h = blues[0].to_string();
+                                                                tracing::info!("[MATCH RECOVERED] Smart Match recovered using primary blue block."); if let Some(first_blue) = blues.first() { m_h = first_blue.to_string(); }
                                                             }
                                                         }
                                                     }
@@ -174,7 +181,7 @@ async fn main() -> anyhow::Result<()> {
                                     sleep(Duration::from_secs(10)).await;
                                 }
                                 
-                                let up_msg = format!("\u{26A1} <b>Native Node Reward!</b> \u{1F48E}\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.8} KAS</code>\n<b>Live Balance:</b> <code>{:.8} KAS</code>\n\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\u{2501}\n<b>TXID:</b> {}\n<b>Mined Block:</b> {}\n<b>TX Block:</b> {}\n<b>Accepting Block:</b> {}\n<b>DAA Score:</b> <code>{}</code>", time_str, w_cl, format_short_wallet(&w_cl), diff, live_bal, format_hash(&f_tx, "transactions"), format_hash(&m_h, "blocks"), format_hash(&b_h, "blocks"), format_hash(&a_h, "blocks"), daa_score);
+                                let up_msg = format!("⚡ <b>Native Node Reward!</b> 💎\n━━━━━━━━━━━━━━━━━━\n<b>Time:</b> <code>{}</code>\n<b>Wallet:</b> <a href=\"https://kaspa.stream/addresses/{}\">{}</a>\n<b>Amount:</b> <code>+{:.8} KAS</code>\n<b>Live Balance:</b> <code>{:.8} KAS</code>\n━━━━━━━━━━━━━━━━━━\n<b>TXID:</b> {}\n<b>Mined Block:</b> {}\n<b>TX Block:</b> {}\n<b>Accepting Block:</b> {}\n<b>DAA Score:</b> <code>{}</code>", time_str, w_cl, format_short_wallet(&w_cl), diff, live_bal, format_hash(&f_tx, "transactions"), format_hash(&m_h, "blocks"), format_hash(&b_h, "blocks"), format_hash(&a_h, "blocks"), daa_score);
                                 for (ci, mi) in s_ids { let _ = bot_cl.edit_message_text(ci, mi, &up_msg).parse_mode(teloxide::types::ParseMode::Html).await; }
                             });
                         }
@@ -188,51 +195,17 @@ async fn main() -> anyhow::Result<()> {
     let repl_rpc = Arc::clone(&shared_rpc);
     let repl_monitoring = Arc::clone(&is_monitoring);
 
-        let cmd_state = Arc::clone(&repl_state);
-    let cmd_rpc = Arc::clone(&repl_rpc);
-    let cmd_mon = Arc::clone(&repl_monitoring);
-
-    let cb_state = Arc::clone(&repl_state);
-    let cb_rpc = Arc::clone(&repl_rpc);
-    let cb_mon = Arc::clone(&repl_monitoring);
-
-    let handler = dptree::entry()
-        .branch(
-            Update::filter_message()
-                .filter_command::<Command>()
-                .endpoint(move |bot: Bot, msg: Message, cmd: Command| {
-                    let state_cl = Arc::clone(&cmd_state);
-                    let rpc_cl = Arc::clone(&cmd_rpc);
-                    let monitoring_cl = Arc::clone(&cmd_mon);
-                    async move {
-                        if let Err(e) = handle_command(bot, msg, cmd, state_cl, rpc_cl, monitoring_cl, admin_id).await {
-                            error!("[CMD ERROR] {}", e);
-                        }
-                        Ok::<(), RequestError>(())
-                    }
-                })
-        )
-        .branch(
-            Update::filter_callback_query()
-                .endpoint(move |bot: Bot, q: teloxide::types::CallbackQuery| {
-                    let state_cl = Arc::clone(&cb_state);
-                    let rpc_cl = Arc::clone(&cb_rpc);
-                    let monitoring_cl = Arc::clone(&cb_mon);
-                    async move {
-                        if let Err(e) = crate::commands::handle_callback(bot, q, state_cl, rpc_cl, monitoring_cl, admin_id).await {
-                            error!("[CB ERROR] {}", e);
-                        }
-                        Ok::<(), RequestError>(())
-                    }
-                })
-        );
-
-    Dispatcher::builder(bot.clone(), handler)
-        .enable_ctrlc_handler()
-        .build()
-        .dispatch()
-        .await;
+    Command::repl(bot.clone(), move |bot: Bot, msg: Message, cmd: Command| {
+        let state_cl = Arc::clone(&repl_state);
+        let rpc_cl = Arc::clone(&repl_rpc); 
+        let monitoring_cl = Arc::clone(&repl_monitoring);
+        async move {
+            if let Err(e) = handle_command(bot, msg, cmd, state_cl, rpc_cl, monitoring_cl, admin_id).await {
+                error!("[CMD ERROR] {}", e);
+            }
+            Ok::<(), RequestError>(())
+        }
+    }).await;
     
     Ok(())
 }
-
