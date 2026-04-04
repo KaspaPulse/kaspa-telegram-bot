@@ -1,0 +1,380 @@
+2026-04-04T09:05:43.536259Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 - Initializing Secure Rust Engine...
+2026-04-04T09:05:43.537427Z  INFO kaspa_rust_bot: [SYSTEM] Loaded 2 wallets from secure storage.
+2026-04-04T09:05:43.538657Z  INFO kaspa_rust_bot: [NODE] Connecting to ws://127.0.0.1:18110 on mainnet...
+2026-04-04T09:05:43.539414Z  INFO kaspa_rust_bot: [SYSTEM] Telegram Engine Started.
+2026-04-04T09:05:43.542921Z  INFO kaspa_rust_bot: [NODE] Connected successfully to Kaspa wRPC on MAINNET!
+2026-04-04T09:06:04.447643Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /start
+2026-04-04T09:06:28.669656Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 requested to track wallet: kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:06:28.810478Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 successfully added wallet kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:06:35.502788Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /balance
+2026-04-04T09:06:38.607630Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /price
+2026-04-04T09:06:41.348001Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /market
+2026-04-04T09:06:43.654810Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /network
+2026-04-04T09:06:43.655508Z ERROR kaspa_rust_bot: [NODE] Error fetching Network DAG: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:06:45.254458Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /dag
+2026-04-04T09:06:46.660189Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /list
+2026-04-04T09:09:25.594080Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:09:25.594839Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:09:26.089625Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:09:26.089625Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:10:00.386356Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 - Initializing Secure Rust Engine...
+2026-04-04T09:10:00.387446Z  INFO kaspa_rust_bot: [SYSTEM] Loaded 2 wallets from secure storage.
+2026-04-04T09:10:00.388408Z  INFO kaspa_rust_bot: [NODE] Initializing wRPC Client for ws://127.0.0.1:18110...
+2026-04-04T09:10:00.389045Z  INFO kaspa_rust_bot: [SYSTEM] Telegram Engine Started.
+2026-04-04T09:10:00.392044Z  INFO kaspa_rust_bot: [NODE] Connected successfully to Kaspa wRPC on MAINNET!
+2026-04-04T09:10:12.008380Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /start
+2026-04-04T09:10:15.405802Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:10:17.417347Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:10:27.700173Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 requested to track wallet: kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:10:27.817946Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 successfully added wallet kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:10:29.881244Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /balance
+2026-04-04T09:10:29.881999Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch balance for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:10:30.010905Z  INFO kaspa_rust_bot: [AUDIT] Total balance sent to user 1725327216: 0.00 KAS
+2026-04-04T09:10:31.635237Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /network
+2026-04-04T09:10:31.636353Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch Network DAG: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:10:32.433755Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:10:33.213066Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /price
+2026-04-04T09:10:33.947984Z  INFO kaspa_rust_bot: [API SUCCESS] Price retrieved: $0.0312
+2026-04-04T09:10:34.449577Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:10:34.825855Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /market
+2026-04-04T09:10:35.485101Z  INFO kaspa_rust_bot: [API SUCCESS] Market cap retrieved: $853010159
+2026-04-04T09:10:36.478207Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /dag
+2026-04-04T09:10:36.479341Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch DAG: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:10:37.923179Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /list
+2026-04-04T09:10:38.162950Z  INFO kaspa_rust_bot: [AUDIT] Sent wallet list to user 1725327216 (Count: 2)
+2026-04-04T09:10:49.465861Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:10:51.482045Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:10:56.634623Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /list
+2026-04-04T09:10:56.756650Z  INFO kaspa_rust_bot: [AUDIT] Sent wallet list to user 1725327216 (Count: 2)
+2026-04-04T09:11:01.098991Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /balance
+2026-04-04T09:11:01.099822Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch balance for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:11:01.215650Z  INFO kaspa_rust_bot: [AUDIT] Total balance sent to user 1725327216: 0.00 KAS
+2026-04-04T09:11:03.658760Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /network
+2026-04-04T09:11:03.659382Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch Network DAG: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:11:06.495187Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:11:08.505569Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:11:14.375936Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /dag
+2026-04-04T09:11:14.376608Z ERROR kaspa_rust_bot: [NODE ERROR] Failed to fetch DAG: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:11:19.509053Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /price
+2026-04-04T09:11:23.514640Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:11:25.529963Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:11:40.539381Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:11:42.548096Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:11:44.704526Z  INFO kaspa_rust_bot: [API SUCCESS] Price retrieved: $0.0312
+2026-04-04T09:11:44.704789Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /market
+2026-04-04T09:11:45.524523Z  INFO kaspa_rust_bot: [API SUCCESS] Market cap retrieved: $853110277
+2026-04-04T09:11:45.524820Z  INFO kaspa_rust_bot: [ADMIN] Executed /sys
+2026-04-04T09:11:46.066620Z  INFO kaspa_rust_bot: [ADMIN] Reading logs...
+2026-04-04T09:11:57.562301Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:11:59.575495Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:12:14.582152Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:12:16.596568Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:12:31.609534Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:12:33.624889Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:12:48.634953Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:12:50.649463Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:13:05.661376Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:13:07.671521Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:13:22.681236Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:13:24.687686Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:13:39.692952Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection lost (RPC Server (remote error) -> WebSocket disconnected). Attempting reconnect...
+2026-04-04T09:13:41.702816Z  INFO kaspa_rust_bot: [WATCHDOG] Reconnected successfully to Node02!
+2026-04-04T09:13:54.718494Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:13:54.718650Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:13:55.224067Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:13:55.224067Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:14:15.892632Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 - Initializing the Ultimate Secure Engine...
+2026-04-04T09:14:15.893928Z  INFO kaspa_rust_bot: [SYSTEM] Loaded 1 healthy wallets from secure storage.
+2026-04-04T09:14:15.895170Z  INFO kaspa_rust_bot: [NODE] Connecting to ws://127.0.0.1:18110...
+2026-04-04T09:14:15.895808Z  INFO kaspa_rust_bot: [SYSTEM] Telegram Golden Engine Active.
+2026-04-04T09:14:15.898560Z  INFO kaspa_rust_bot: [NODE] Connected successfully to Kaspa wRPC on MAINNET!
+2026-04-04T09:14:19.905313Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:20.409800Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:22.205024Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /start
+2026-04-04T09:14:24.413514Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:24.916981Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:28.926843Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:29.430401Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:33.434302Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:33.937299Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:36.988505Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 tracking attempt: kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:14:37.123735Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 successfully bound wallet kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:14:37.943754Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:38.446989Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:39.725543Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /list
+2026-04-04T09:14:39.953633Z  INFO kaspa_rust_bot: [AUDIT] List sent to user 1725327216 (Count: 1)
+2026-04-04T09:14:42.135150Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /balance
+2026-04-04T09:14:42.135742Z ERROR kaspa_rust_bot: [NODE ERROR] Balance query rejected for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:14:42.407055Z  INFO kaspa_rust_bot: [AUDIT] Transmitted total balance report to user 1725327216: 0.00 KAS
+2026-04-04T09:14:42.450464Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:42.955872Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:45.841313Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /network
+2026-04-04T09:14:45.841842Z ERROR kaspa_rust_bot: [NODE ERROR] Network fetch blocked: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:14:46.961029Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:47.390662Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /fees
+2026-04-04T09:14:47.476290Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:51.487491Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:51.992209Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:14:55.997659Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:14:56.514762Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:00.521812Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:01.042462Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:05.048885Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:05.554711Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:07.537262Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /supply
+2026-04-04T09:15:09.560247Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:10.077671Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:14.090458Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:14.593918Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:18.609285Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:19.125159Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:23.141926Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:23.659590Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:27.670207Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:28.177856Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:32.187023Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:32.707245Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:34.314719Z  INFO kaspa_rust_bot: [API SUCCESS] Supply stats delivered.
+2026-04-04T09:15:34.314990Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /price
+2026-04-04T09:15:36.717895Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:37.221048Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:41.222190Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:41.725804Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:45.738348Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:46.244526Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:50.249357Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:50.764972Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:54.778053Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:55.295549Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:15:59.310776Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:15:59.827545Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:03.835715Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:04.340607Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:05.025763Z  INFO kaspa_rust_bot: [API SUCCESS] Price pulled: $0.0312
+2026-04-04T09:16:05.026322Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /market
+2026-04-04T09:16:05.902000Z  INFO kaspa_rust_bot: [API SUCCESS] Market cap pulled.
+2026-04-04T09:16:05.902250Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /dag
+2026-04-04T09:16:05.902644Z ERROR kaspa_rust_bot: [NODE ERROR] DAG fetch failed: RPC Server (remote error) -> WebSocket disconnected
+2026-04-04T09:16:06.041916Z  INFO kaspa_rust_bot: [AUDIT] User 1725327216 executed /list
+2026-04-04T09:16:06.157593Z  INFO kaspa_rust_bot: [AUDIT] List sent to user 1725327216 (Count: 1)
+2026-04-04T09:16:08.357208Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:08.863604Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:12.880219Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:13.398000Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:17.409647Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:17.912456Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:21.924359Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:22.430701Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:26.434646Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:26.939160Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:30.947371Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:31.463345Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:35.474481Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:35.990197Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:40.002414Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:40.506494Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:44.516148Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:45.034351Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:49.042342Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:49.559065Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:53.561891Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:54.066133Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:16:58.077235Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:16:58.580899Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:17:02.589722Z  WARN kaspa_rust_bot: [WATCHDOG] Node connection silent (RPC Server (remote error) -> WebSocket disconnected). Sending reconnect pulse...
+2026-04-04T09:17:03.094694Z  INFO kaspa_rust_bot: [WATCHDOG] Connection stabilized to Node02!
+2026-04-04T09:17:05.270779Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:17:05.270931Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:17:05.373400Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:17:05.373411Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:18:39.477954Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 (Jeddah) - Initializing Rust Engine...
+2026-04-04T09:18:39.479169Z  INFO kaspa_rust_bot: [DATA] Wallets loaded from disk. Total: 1
+2026-04-04T09:18:39.480310Z  INFO kaspa_rust_bot: [NODE] Connecting to ws://127.0.0.1:18110...
+2026-04-04T09:18:39.480952Z  INFO kaspa_rust_bot: Bot Service Started. Perfected Edition: Local Node Block Fetching Active.
+2026-04-04T09:18:39.484097Z  INFO kaspa_rust_bot: [NODE] Connected directly to KaspaPulse successfully!
+2026-04-04T09:18:58.957622Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /start
+2026-04-04T09:18:58.957920Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🤖 <b>Kaspa Node Command Center</b> \ ━━━━━━━━━━━━━━━━━━ \ <b>Smart Detect:</b> Paste any Kaspa address to auto-track it. \  \ <b>Wallet Management:</b> \ /add <code>&lt;address&gt;</code> - Track wallet \ /remove <code>&lt;address&gt;</code> - Stop tracking \  \ <b>Choose an option below or type a command:</b>
+2026-04-04T09:19:10.976831Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:19:10.979910Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ✅ <b>Added to Native Tracking:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:19:13.232473Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /balance
+2026-04-04T09:19:13.235277Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🏦 <b>Wallet Balances (Node Direct)</b> \ ━━━━━━━━━━━━━━ \ 💳 <code>kaspa:qq2avy...pep7vg</code> \ ⚖️ <code>6209.38 KAS</code> \  \ ━━━━━━━━━━━━━━ \ 💵 <b>Total Holdings:</b> <code>6209.38 KAS</code>
+2026-04-04T09:19:15.430435Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /network
+2026-04-04T09:19:15.432294Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🌐 <b>Kaspa Network Stats</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>KaspaPulse</code> \ 🧩 <b>Network:</b> <code>mainnet</code> \ ⚙️ <b>Difficulty:</b> <code>20862932436513240</code>
+2026-04-04T09:19:17.337212Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /fees
+2026-04-04T09:19:34.548014Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⚡ <b>Reward Detected!</b> \ ━━━━━━━━━━━━━━ \ 💳 <b>Wallet:</b> <code>kaspa:qq2avy...pep7vg</code> \ 💰 <b>Amount:</b> <code>+3.09 KAS</code> \ ⚖️ <b>New Balance:</b> <code>6212.47 KAS</code>
+2026-04-04T09:19:34.755921Z  INFO kaspa_rust_bot: [PROCESS] NEW REWARD: 3.09 KAS | Sent initial alert.
+2026-04-04T09:19:45.298147Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⛽ <b>Network Mempool Fees</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>API</code> \ 🟡 <b>Normal:</b> <code>1.000 sompi/gram</code>
+2026-04-04T09:19:45.456028Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /supply
+2026-04-04T09:19:46.137564Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🪙 <b>Kaspa Supply Info</b> \ ━━━━━━━━━━━━━━ \ 🔄 <b>Circulating:</b> <code>27335897673 KAS</code> \ 🛑 <b>Max Supply:</b> <code>28700000000 KAS</code>
+2026-04-04T09:19:46.282503Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /price
+2026-04-04T09:19:46.765658Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 💵 <b>Kaspa (KAS) Price</b> \ ━━━━━━━━━━━━━━ \ 🏷️ <b>Price:</b> <code>$0.0312 USD</code>
+2026-04-04T09:19:47.007065Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /market
+2026-04-04T09:19:47.617738Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📈 <b>Kaspa Market Overview</b> \ ━━━━━━━━━━━━━━ \ 💎 <b>Market Cap:</b> <code>$853735622 USD</code>
+2026-04-04T09:19:47.748854Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /dag
+2026-04-04T09:19:47.749594Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📦 <b>Node BlockDAG Details</b> \ ━━━━━━━━━━━━━━ \ 🧱 <b>Blocks:</b> <code>1176422</code> \ 📑 <b>Headers:</b> <code>1176422</code>
+2026-04-04T09:19:48.047032Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /list
+2026-04-04T09:19:48.047235Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📁 <b>Your Tracked Portfolio</b> \ ━━━━━━━━━━━━━━━━━━ \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:19:48.173077Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /sys
+2026-04-04T09:19:48.518605Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⚙️ <b>System & Bot Diagnostics</b> \  \ <b>Bot Status:</b> \ 🔸 Monitoring Engine: <code>ACTIVE ▶️</code> \ 🔸 Total Tracked Wallets: <code>1</code> \  \ <b>Server Hardware:</b> \ 🔹 Server RAM: <code>23 GB / 31.33 GB</code>
+2026-04-04T09:23:45.816438Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:23:45.816689Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:23:46.162376Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:23:46.162376Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:25:22.132059Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 (Jeddah) - Initializing Rust Engine...
+2026-04-04T09:25:22.133064Z  INFO kaspa_rust_bot: [DATA] Wallets loaded from disk. Total: 1
+2026-04-04T09:25:22.133919Z  INFO kaspa_rust_bot: [NODE] Connecting to ws://127.0.0.1:18110...
+2026-04-04T09:25:22.134515Z  INFO kaspa_rust_bot: Bot Service Started. Perfected Edition: Local Node Block Fetching Active.
+2026-04-04T09:25:22.137298Z  INFO kaspa_rust_bot: [NODE] Connected directly to KaspaPulse successfully!
+2026-04-04T09:25:50.752038Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /start
+2026-04-04T09:25:50.752240Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🤖 <b>Kaspa Node Command Center</b> \ ━━━━━━━━━━━━━━━━━━ \ <b>Smart Detect:</b> Paste any Kaspa address to auto-track it. \  \ <b>Wallet Management:</b> \ /add <code>&lt;address&gt;</code> - Track wallet \ /remove <code>&lt;address&gt;</code> - Stop tracking \  \ <b>Choose an option below or type a command:</b>
+2026-04-04T09:25:58.500891Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:25:58.503683Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ✅ <b>Added to Native Tracking:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:26:00.726931Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /balance
+2026-04-04T09:26:00.729921Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🏦 <b>Wallet Balances (Node Direct)</b> \ ━━━━━━━━━━━━━━ \ 💳 <code>kaspa:qq2avy...pep7vg</code> \ ⚖️ <code>6215.55 KAS</code> \  \ ━━━━━━━━━━━━━━ \ 💵 <b>Total Holdings:</b> <code>6215.55 KAS</code>
+2026-04-04T09:26:02.300979Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /network
+2026-04-04T09:26:02.301819Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🌐 <b>Kaspa Network Stats</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>KaspaPulse</code> \ 🧩 <b>Network:</b> <code>mainnet</code> \ ⚙️ <b>Difficulty:</b> <code>20756742485471610</code>
+2026-04-04T09:26:04.207495Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /fees
+2026-04-04T09:26:04.835280Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⛽ <b>Network Mempool Fees</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>API</code> \ 🟡 <b>Normal:</b> <code>1.000 sompi/gram</code>
+2026-04-04T09:26:06.444074Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /supply
+2026-04-04T09:26:07.029217Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🪙 <b>Kaspa Supply Info</b> \ ━━━━━━━━━━━━━━ \ 🔄 <b>Circulating:</b> <code>27335909196 KAS</code> \ 🛑 <b>Max Supply:</b> <code>28700000000 KAS</code>
+2026-04-04T09:26:08.424203Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /price
+2026-04-04T09:26:08.924226Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 💵 <b>Kaspa (KAS) Price</b> \ ━━━━━━━━━━━━━━ \ 🏷️ <b>Price:</b> <code>$0.0312 USD</code>
+2026-04-04T09:26:10.172048Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /market
+2026-04-04T09:26:11.000373Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📈 <b>Kaspa Market Overview</b> \ ━━━━━━━━━━━━━━ \ 💎 <b>Market Cap:</b> <code>$854041327 USD</code>
+2026-04-04T09:26:12.291864Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /dag
+2026-04-04T09:26:12.292601Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📦 <b>Node BlockDAG Details</b> \ ━━━━━━━━━━━━━━ \ 🧱 <b>Blocks:</b> <code>1180186</code> \ 📑 <b>Headers:</b> <code>1180186</code>
+2026-04-04T09:26:13.849373Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /list
+2026-04-04T09:26:13.849603Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📁 <b>Your Tracked Portfolio</b> \ ━━━━━━━━━━━━━━━━━━ \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:26:21.569897Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /sys
+2026-04-04T09:26:21.901104Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⚙️ <b>System & Bot Diagnostics</b> \  \ <b>Bot Status:</b> \ 🔸 Monitoring Engine: <code>ACTIVE ▶️</code> \ 🔸 Total Tracked Wallets: <code>1</code> \  \ <b>Server Hardware:</b> \ 🔹 Server RAM: <code>23 GB / 31.33 GB</code>
+2026-04-04T09:26:25.212555Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /logs
+2026-04-04T09:26:25.224271Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📜 <b>Recent System Logs:</b> \ <pre>2026-04-04T09:25:22.134515Z  INFO kaspa_rust_bot: Bot Service Started. Perfected Edition: Local Node Block Fetching Active. \ 2026-04-04T09:25:22.137298Z  INFO kaspa_rust_bot: [NODE] Connected directly to KaspaPulse successfully! \ 2026-04-04T09:25:50.752038Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /start \ 2026-04-04T09:25:50.752240Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🤖 <b>Kaspa Node Command Center</b> \ ━━━━━━━━━━━━━━━━━━ \ <b>Smart Detect:</b> Paste any Kaspa address to auto-track it. \  \ <b>Wallet Management:</b> \ /add <code>&lt;address&gt;</code> - Track wallet \ /remove <code>&lt;address&gt;</code> - Stop tracking \  \ <b>Choose an option below or type a command:</b> \ 2026-04-04T09:25:58.500891Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg \ 2026-04-04T09:25:58.503683Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ✅ <b>Added to Native Tracking:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code> \ 2026-04-04T09:26:00.726931Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /balance \ 2026-04-04T09:26:00.729921Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🏦 <b>Wallet Balances (Node Direct)</b> \ ━━━━━━━━━━━━━━ \ 💳 <code>kaspa:qq2avy...pep7vg</code> \ ⚖️ <code>6215.55 KAS</code> \  \ ━━━━━━━━━━━━━━ \ 💵 <b>Total Holdings:</b> <code>6215.55 KAS</code> \ 2026-04-04T09:26:02.300979Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /network \ 2026-04-04T09:26:02.301819Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🌐 <b>Kaspa Network Stats</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>KaspaPulse</code> \ 🧩 <b>Network:</b> <code>mainnet</code> \ ⚙️ <b>Difficulty:</b> <code>20756742485471610</code> \ 2026-04-04T09:26:04.207495Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /fees \ 2026-04-04T09:26:04.835280Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⛽ <b>Network Mempool Fees</b> \ ━━━━━━━━━━━━━━ \ 📡 <b>Source:</b> <code>API</code> \ 🟡 <b>Normal:</b> <code>1.000 sompi/gram</code> \ 2026-04-04T09:26:06.444074Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /supply \ 2026-04-04T09:26:07.029217Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🪙 <b>Kaspa Supply Info</b> \ ━━━━━━━━━━━━━━ \ 🔄 <b>Circulating:</b> <code>27335909196 KAS</code> \ 🛑 <b>Max Supply:</b> <code>28700000000 KAS</code> \ 2026-04-04T09:26:08.424203Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /price \ 2026-04-04T09:26:08.924226Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 💵 <b>Kaspa (KAS) Price</b> \ ━━━━━━━━━━━━━━ \ 🏷️ <b>Price:</b> <code>$0.0312 USD</code> \ 2026-04-04T09:26:10.172048Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /market \ 2026-04-04T09:26:11.000373Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📈 <b>Kaspa Market Overview</b> \ ━━━━━━━━━━━━━━ \ 💎 <b>Market Cap:</b> <code>$854041327 USD</code> \ 2026-04-04T09:26:12.291864Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /dag \ 2026-04-04T09:26:12.292601Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📦 <b>Node BlockDAG Details</b> \ ━━━━━━━━━━━━━━ \ 🧱 <b>Blocks:</b> <code>1180186</code> \ 📑 <b>Headers:</b> <code>1180186</code> \ 2026-04-04T09:26:13.849373Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /list \ 2026-04-04T09:26:13.849603Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📁 <b>Your Tracked Portfolio</b> \ ━━━━━━━━━━━━━━━━━━ \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code> \ 2026-04-04T09:26:21.569897Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /sys \ 2026-04-04T09:26:21.901104Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⚙️ <b>System & Bot Diagnostics</b> \  \ <b>Bot Status:</b> \ 🔸 Monitoring Engine: <code>ACTIVE ▶️</code> \ 🔸 Total Tracked Wallets: <code>1</code> \  \ <b>Server Hardware:</b> \ 🔹 Server RAM: <code>23 GB / 31.33 GB</code> \ 2026-04-04T09:26:25.212555Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /logs</pre>
+2026-04-04T09:27:47.464791Z  INFO kaspa_rust_bot: [PROCESS] NEW REWARD: 3.09171812 KAS | Sent initial alert, starting background API poll.
+2026-04-04T09:27:57.472798Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 1)
+2026-04-04T09:28:07.958257Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 2)
+2026-04-04T09:28:18.526187Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 3)
+2026-04-04T09:28:29.059771Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 4)
+2026-04-04T09:28:39.541580Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 5)
+2026-04-04T09:28:50.181176Z  INFO kaspa_rust_bot: [API POLL] Checking hashes for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg (Attempt 6)
+2026-04-04T09:29:00.905656Z  INFO kaspa_rust_bot: [PROCESS] TX Not Found resolved and messages updated.
+2026-04-04T09:32:00.486656Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:32:00.486835Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:35:10.055512Z  INFO kaspa_rust_bot: [SYSTEM] Server Node02 - Initializing Final Stabilized Engine...
+2026-04-04T09:35:10.056847Z  INFO kaspa_rust_bot: [DATA] Wallets loaded successfully.
+2026-04-04T09:35:10.058333Z  INFO kaspa_rust_bot: Bot Service Started. Local Node Dual-Fetch Block Engine Active.
+2026-04-04T09:35:22.857905Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /start
+2026-04-04T09:35:22.858105Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🤖 <b>Kaspa Node Command Center</b> \ ━━━━━━━━━━━━━━━━━━ \ <b>Smart Detect:</b> Paste any Kaspa address to auto-track it. \  \ <b>Wallet Management:</b> \ /add <code>&lt;address&gt;</code> - Track wallet \ /remove <code>&lt;address&gt;</code> - Stop tracking \  \ <b>Choose an option below:</b>
+2026-04-04T09:35:29.606960Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:35:29.609812Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ✅ <b>Added to Native Tracking:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:35:31.577922Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /balance
+2026-04-04T09:35:31.579846Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🏦 <b>Live Balances:</b> \ 💳 <code>kaspa:qq2avy...pep7vg</code> \ ⚖️ <code>6221.73 KAS</code> \  \ 💵 <b>Total:</b> <code>6221.73 KAS</code>
+2026-04-04T09:35:33.043547Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /network
+2026-04-04T09:35:33.044280Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 🌐 <b>Network Stats:</b> \ 🧩 <b>Network:</b> <code>mainnet</code> \ ⚙️ <b>Difficulty:</b> <code>20658674845223524</code>
+2026-04-04T09:35:34.354323Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /fees
+2026-04-04T09:35:39.902978Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /supply
+2026-04-04T09:35:40.684508Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /price
+2026-04-04T09:35:41.739955Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 💵 <b>Price:</b> <code>$0.0312 USD</code>
+2026-04-04T09:35:41.879002Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /market
+2026-04-04T09:35:41.902971Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /dag
+2026-04-04T09:35:42.468457Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /list
+2026-04-04T09:35:42.468721Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: 📁 <b>Portfolio:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:35:51.085239Z  INFO kaspa_rust_bot: [CMD IN] UserID: 1725327216 | Executing: /sys
+2026-04-04T09:35:51.452811Z  INFO kaspa_rust_bot: [BOT OUT] Chat ID: 1725327216 | Msg: ⚙️ <b>Sysinfo:</b> \ 🧠 <b>RAM:</b> <code>23378 / 32085 MB</code>
+2026-04-04T09:37:28.442673Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:37:28.443403Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:37:28.789309Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:37:28.789309Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:37:52.733356Z  INFO kaspa_rust_bot: [SYSTEM] Node02 (Jeddah) - Initializing Deep Audit Engine...
+2026-04-04T09:37:52.734326Z  INFO kaspa_rust_bot: [DATA LOAD] Wallets restored from disk. Count: 1
+2026-04-04T09:37:52.735184Z  INFO kaspa_rust_bot: [NODE INIT] Connecting wRPC to ws://127.0.0.1:18110...
+2026-04-04T09:37:52.735790Z  INFO kaspa_rust_bot: Bot Service Started. deep-trace enabled.
+2026-04-04T09:37:57.739845Z  INFO kaspa_rust_bot: [TRACKER] Live Reward Monitor engaged.
+2026-04-04T09:37:58.311998Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /start
+2026-04-04T09:37:58.312183Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 🤖 <b>Kaspa Node Command Center</b> \ ━━━━━━━━━━━━━━━━━━ \ <b>Smart Detect:</b> Paste any Kaspa address to auto-track it. \  \ <b>Wallet Management:</b> \ /add <code>&lt;address&gt;</code> - Track wallet \ /remove <code>&lt;address&gt;</code> - Stop tracking \  \ <b>Choose an option below:</b>
+2026-04-04T09:38:04.375668Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:38:04.377011Z  INFO kaspa_rust_bot: [LOGIC] User 1725327216 added wallet kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:38:04.377129Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: ✅ <b>Added to Native Tracking:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:38:05.635619Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /balance
+2026-04-04T09:38:05.638264Z  INFO kaspa_rust_bot: [RPC SUCCESS] Balance fetched for kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg: 6221.73052453 KAS
+2026-04-04T09:38:05.638461Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 🏦 <b>Live Balances:</b> \ 💳 <code>kaspa:qq2avy...pep7vg</code> \ ⚖️ <code>6221.73 KAS</code> \  \ 💵 <b>Total:</b> <code>6221.73 KAS</code>
+2026-04-04T09:38:06.755992Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /network
+2026-04-04T09:38:06.756882Z  INFO kaspa_rust_bot: [RPC SUCCESS] Network info retrieved.
+2026-04-04T09:38:06.757052Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 🌐 <b>Network Stats:</b> \ 🧩 <b>Network:</b> <code>mainnet</code> \ ⚙️ <b>Difficulty:</b> <code>20641517977400320</code>
+2026-04-04T09:38:07.862306Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /fees
+2026-04-04T09:38:08.438480Z  INFO kaspa_rust_bot: [API SUCCESS] Fees pulled: 1
+2026-04-04T09:38:08.438996Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: ⛽ <b>Fees:</b> <code>1.000 sompi</code>
+2026-04-04T09:38:09.634509Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /supply
+2026-04-04T09:38:10.239740Z  INFO kaspa_rust_bot: [API SUCCESS] Supply info pulled.
+2026-04-04T09:38:10.240007Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 🪙 <b>Supply:</b> <code>27335931399.46718 KAS</code>
+2026-04-04T09:38:11.091341Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /price
+2026-04-04T09:38:11.527426Z  INFO kaspa_rust_bot: [API SUCCESS] Price pulled: $0.03126683
+2026-04-04T09:38:11.527726Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 💵 <b>Price:</b> <code>$0.0313 USD</code>
+2026-04-04T09:38:12.596183Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /market
+2026-04-04T09:38:13.187151Z  INFO kaspa_rust_bot: [API SUCCESS] Market cap pulled.
+2026-04-04T09:38:13.187459Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 📈 <b>Market Overview</b> \ 💎 <b>Cap:</b> <code>$854291043 USD</code>
+2026-04-04T09:38:14.137996Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /dag
+2026-04-04T09:38:14.138682Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 🧱 <b>Blocks:</b> <code>1187357</code>
+2026-04-04T09:38:15.131471Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /list
+2026-04-04T09:38:15.131692Z  INFO kaspa_rust_bot: [LOGIC] User 1725327216 requested list. Found: 1
+2026-04-04T09:38:15.131868Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: 📁 <b>Portfolio:</b> \ <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:38:18.153102Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Executing: /sys
+2026-04-04T09:38:18.499504Z  INFO kaspa_rust_bot: [BOT OUT] To: 1725327216 | Msg: ⚙️ <b>Sysinfo:</b> \ 🧠 <b>RAM:</b> <code>23408 / 32085 MB</code> \ 👀 <b>Monitoring:</b> <code>true</code>
+2026-04-04T09:39:32.290285Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:39:32.290821Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:39:32.459501Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:39:32.459501Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:40:32.741789Z  INFO kaspa_rust_bot: [INIT] Server Node02 - Final Masterpiece Engaged.
+2026-04-04T09:40:32.742716Z  INFO kaspa_rust_bot: [DATA] Wallets loaded: 1
+2026-04-04T09:40:41.665910Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /start
+2026-04-04T09:40:41.666106Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🤖 <b>Kaspa Node Ready</b>
+2026-04-04T09:40:54.980026Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:40:54.981860Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ✅ <b>Tracking:</b> | <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:40:56.954301Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /balance
+2026-04-04T09:40:56.956146Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🏦 <b>Balances:</b> | 💳 <code>kaspa:qq2avy...pep7vg</code> | ⚖️ <b>6,225 KAS</b> |  | 💵 <b>Total:</b> <code>6,225 KAS</code>
+2026-04-04T09:40:58.272347Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /network
+2026-04-04T09:40:58.272544Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:40:59.481640Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /fees
+2026-04-04T09:40:59.481862Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:41:00.675018Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /supply
+2026-04-04T09:41:00.675185Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:41:01.971637Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /price
+2026-04-04T09:41:02.509359Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 💵 <b>Price:</b> <code>$0.0313 USD</code>
+2026-04-04T09:41:03.439256Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /market
+2026-04-04T09:41:03.439483Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:41:04.404361Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /dag
+2026-04-04T09:41:04.404511Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:41:05.500076Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /list
+2026-04-04T09:41:05.500237Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🛠️ Command under maintenance.
+2026-04-04T09:41:08.521915Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /sys
+2026-04-04T09:41:08.841562Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ⚙️ <b>RAM:</b> <code>23404 / 32085 MB</code> | 👀 <b>Monitor:</b> <code>true</code>
+2026-04-04T09:42:23.245855Z  INFO teloxide::dispatching::dispatcher: ^C received, trying to shutdown the dispatcher...
+2026-04-04T09:42:23.246713Z  INFO teloxide::utils::shutdown_token: Trying to shutdown the dispatcher...
+2026-04-04T09:42:23.447602Z  INFO teloxide::dispatching::dispatcher: dispatcher is shutdown...
+2026-04-04T09:42:23.447602Z  INFO teloxide::utils::shutdown_token: Dispatching has been shut down.
+2026-04-04T09:43:22.563122Z  INFO kaspa_rust_bot: [INIT] Server Node02 - Final Masterpiece Engaged.
+2026-04-04T09:43:22.564067Z  INFO kaspa_rust_bot: [DATA] Wallets loaded: 1
+2026-04-04T09:43:30.824323Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /start
+2026-04-04T09:43:30.824594Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🤖 <b>Kaspa Platinum Command Center</b> | ━━━━━━━━━━━━━━━━━━ | <b>Node02:</b> Online 🟢 | <b>Tracking:</b> Active 🛡️ |  | <b>Choose an option:</b>
+2026-04-04T09:43:39.483939Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /add
+2026-04-04T09:43:39.485112Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ❌ <b>Invalid Format!</b>
+2026-04-04T09:43:46.409492Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /add kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg
+2026-04-04T09:43:46.410436Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ✅ <b>Tracking Enabled:</b> | <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:43:48.186283Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /balance
+2026-04-04T09:43:48.188581Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🏦 <b>Live Balances:</b> | 💳 <code>kaspa:qq2avy...pep7vg</code> | ⚖️ <b>6,228 KAS</b> |  | ━━━━━━━━━━━━━━ | 💵 <b>Total Holdings:</b> <code>6,228 KAS</code>
+2026-04-04T09:43:49.763996Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /network
+2026-04-04T09:43:49.764710Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🌐 <b>Network Stats:</b> | 🧩 <b>Network:</b> <code>mainnet</code> | ⚙️ <b>Difficulty:</b> <code>20,654,518,461,089,440</code> | 📊 <b>DAA Score:</b> <code>398,762,573</code>
+2026-04-04T09:43:50.993200Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /fees
+2026-04-04T09:43:51.570086Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ⛽ <b>Fee Estimate:</b> <code>1.00 sompi/gram</code>
+2026-04-04T09:43:52.779967Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /supply
+2026-04-04T09:43:53.351390Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🪙 <b>Supply:</b> <code>27,335,942,092 KAS</code>
+2026-04-04T09:43:54.120256Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /price
+2026-04-04T09:43:54.611487Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 💵 <b>Price:</b> <code>$0.0313 USD</code>
+2026-04-04T09:43:55.446649Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /market
+2026-04-04T09:43:56.106480Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 📈 <b>Market Cap:</b> <code>$855,283,679 USD</code>
+2026-04-04T09:43:56.956131Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /dag
+2026-04-04T09:43:56.956799Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 🧱 <b>BlockDAG Details:</b> | 🧱 <b>Blocks:</b> <code>1,190,841</code> | 📑 <b>Headers:</b> <code>1,190,841</code>
+2026-04-04T09:43:58.333362Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /list
+2026-04-04T09:43:58.333611Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: 📁 <b>Portfolio:</b> | <code>kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg</code>
+2026-04-04T09:44:01.443301Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /sys
+2026-04-04T09:44:01.777552Z  INFO kaspa_rust_bot: [BOT OUT] Chat: 1725327216 | Msg: ⚙️ <b>Server Node02:</b> | 🧠 <b>RAM Used:</b> <code>23363 MB</code> | 🧠 <b>RAM Total:</b> <code>32085 MB</code> | 👀 <b>Monitor:</b> <code>true</code>
+2026-04-04T09:44:05.280605Z  INFO kaspa_rust_bot: [CMD IN] User: 1725327216 | Msg: /logs
