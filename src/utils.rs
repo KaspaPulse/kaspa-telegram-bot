@@ -21,7 +21,6 @@ pub fn make_golden_keyboard() -> KeyboardMarkup {
     ]).resize_keyboard()
 }
 
-#[tracing::instrument(skip(bot), fields(action = "telegram_dispatch"))]
 pub async fn send_and_log(bot: &Bot, chat_id: ChatId, text: String, markup: Option<KeyboardMarkup>) -> anyhow::Result<()> {
     let log_text = text.replace('\n', " | ");
     info!("[BOT OUT] Chat: {} | Msg: {}", chat_id.0, log_text);
@@ -42,46 +41,3 @@ pub fn format_hash(h: &str, link_type: &str) -> String {
         format!("<code>{}</code>", h)
     }
 }
-
-// ==========================================
-// ENTERPRISE TELEMETRY ENGINE
-// ==========================================
-
-
-
-
-pub fn init_enterprise_telemetry() -> Option<tracing_appender::non_blocking::WorkerGuard> {
-    use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
-    
-    let file_appender = tracing_appender::rolling::daily("logs", "kaspa_bot_telemetry");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-
-    let console_layer = fmt::layer()
-        .with_target(false)
-        .with_thread_ids(true)
-        .with_line_number(true)
-        .with_ansi(true);
-
-    let file_layer = fmt::layer()
-        .json()
-        .with_writer(non_blocking);
-
-    // try_init() is the global standard for safe logger initialization
-    let init_result = tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
-        .with(console_layer)
-        .with(file_layer)
-        .try_init();
-
-    match init_result {
-        Ok(_) => {
-            tracing::info!(system = "Kaspa Platinum Command Center", status = "Started", "Enterprise Telemetry Initialized.");
-            Some(guard)
-        }
-        Err(_) => {
-            // Silently ignore if another logger (like Teloxide's default) is already running
-            None 
-        }
-    }
-}
-
